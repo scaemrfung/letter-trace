@@ -160,6 +160,20 @@
     30% { opacity: 1; }
     100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
   }
+  button.show { background: var(--blue); color: white; }
+  button.show.playing { background: #1f4fb8; }
+  .toast {
+    position: fixed; left: 50%; top: 72%; z-index: 6; pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.92); opacity: 0;
+    transition: opacity 200ms ease, transform 200ms ease;
+    background: white; border-radius: 22px; padding: 16px 26px; max-width: min(90vw, 560px);
+    text-align: center; font-size: 26px; font-weight: 800; line-height: 1.25;
+    box-shadow: 0 18px 40px rgba(36, 48, 68, 0.18);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .toast.oops { color: var(--coral); }
+  .toast.yay { color: var(--green); }
+  .toast small { display: block; font-size: 17px; font-weight: 700; color: var(--muted); margin-top: 4px; }
   @media (max-width: 800px) {
     body.both .stage { grid-template-columns: 1fr; }
   }
@@ -179,6 +193,10 @@
     <div class="seg">
       <button id="guideBtn" class="active">Dotted guide</button>
       <button id="styleBtn">Solid guide</button>
+    </div>
+    <div class="seg">
+      <button id="showBtn" class="show">▶ Show me</button>
+      <button id="numBtn" class="active" aria-pressed="true">1 2 3 Numbers</button>
     </div>
   </header>
 
@@ -233,10 +251,32 @@
   <div class="alpha" id="alpha"></div>
   <details class="helpbox">
     <summary>How to use this on an iPad</summary>
-    <p class="help">Open this page in Safari. Tap Share, then Add to Home Screen, so it opens like an app. Turn the iPad sideways for a bigger board. Trace on the dotted letter with a finger or Apple Pencil. Pink dashed line is the middle. Dark blue line is the baseline. Letters with tails (g, j, p, q, y) go under the baseline. Tap I traced it to save a green dot. Progress stays on this iPad.</p>
+    <p class="help">Open this page in Safari. Tap Share, then Add to Home Screen, so it opens like an app. Turn the iPad sideways for a bigger board. Trace on the dotted letter with a finger or Apple Pencil. Pink dashed line is the middle. Dark blue line is the baseline. Letters with tails (g, j, p, q, y) go under the baseline. Coloured numbers show which line to make first, and arrows show which way to go. Tap Show me to watch the letter being made, and tap Numbers to hide or show the numbers. Tap I traced it when you are done: the green dot is only saved when the tracing stays on the line and covers the whole letter. Progress stays on this iPad.</p>
   </details>
   <div class="burst" id="burst"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="tracekit.js"></script>
 <script>
+/* ===== Tracing check settings (easy to change) =====
+   Distances are a share of the letter height (top line to baseline), so they
+   grow and shrink with the screen. Defaults live in tracekit.js. */
+const TRACE_RULES = {
+  inkOnLineMin: 0.85,      // at least 85% of what the child draws must be on the letter
+  inkTolerance: 0.11,      // "on the letter" = within 11% of letter height of a stroke's centre, plus half the pen width
+  coverageMin: 0.80,       // at least 80% of the letter must be traced
+  strokeCoverageMin: 0.75, // and every stroke (each line, curve or dot) at least 75%
+  coverRadius: 0.12,       // a part of the letter counts as traced when ink comes this close
+  orderCheck: "hint"       // "off", "hint" (friendly tip, still earns the dot) or "strict" (wrong order = try again)
+};
+const MESSAGES = {
+  empty: "Trace the letter first! ✏️",
+  off: "Try again, stay on the line! 🙂",
+  partial: "Almost! Trace the whole letter. 🙂",
+  order: "Try again! Start at 1 and follow the arrows. 🙂",
+  pass: "Great tracing! ⭐",
+  passHint: "Great tracing! ⭐<small>Next time, start at 1 and follow the arrows.</small>"
+};
+
 const TIPS = {
   A: "Start at the top. Slide down left, slide down right, then a line across the middle.",
   B: "Start at the top. Straight line down, then a curve on top and a curve on the bottom.",
@@ -248,16 +288,16 @@ const TIPS = {
   H: "Two straight lines down. Connect them across the middle.",
   I: "Start at the top. One straight line down. A small line across the top and the bottom.",
   J: "Start at the top. Line down, then curve to the left at the bottom.",
-  K: "Straight line down. From the middle, a diagonal up and a diagonal down.",
+  K: "Straight line down. Then start at the top right: slant in to the line, then slant out to the bottom.",
   L: "Start at the top. Line down, then a line across the bottom to the right.",
-  M: "Start at the top. Line down, then two mountains back up to the top line.",
+  M: "Line down. Go back to the top: slant down to the middle, slant back up, then line down.",
   N: "Line down, diagonal down to the bottom, then line up.",
   O: "Start at the top. Curve all the way around until you meet the start.",
   P: "Line down from the top. Curve out and back to the middle.",
   Q: "Make an O. Then a short diagonal tail at the bottom right.",
   R: "Line down. Curve out and back to the middle, then a diagonal leg.",
   S: "Start at the top. Curve left, then curve the other way, like a snake.",
-  T: "Start at the top. Line across, then a line down from the middle.",
+  T: "Start at the top. Line down from the middle, then a line across the top.",
   U: "Line down, curve along the bottom, line back up.",
   V: "Start at the top. Slide down to a point, then back up.",
   W: "Like two Vs. Down, up, down, up.",
@@ -267,9 +307,9 @@ const TIPS = {
   a: "Start at the middle line. Curve around like a circle, then a short line down to the baseline.",
   b: "Line down from the top. At the middle, curve around to make a ball.",
   c: "Start at the middle line. Curve back and around. Leave it open.",
-  d: "Start at the middle. Curve around, then a straight line up to the top and back down.",
+  d: "Start just under the middle line. Circle back, then a tall line from the top down to the baseline.",
   e: "Start in the middle of the letter. Line across, then curve around.",
-  f: "Curve up at the top, line down past the baseline, then a short line across.",
+  f: "Start near the top. Curve up and back, line down to the baseline, then a short line across the middle.",
   g: "Circle from the middle line, then a tail that curves under the baseline.",
   h: "Line down from the top. From the middle, bump out and down to the baseline.",
   i: "Short line from the middle line down. Then a dot above it.",
@@ -284,11 +324,11 @@ const TIPS = {
   r: "Short line down. From the top, a small curve out.",
   s: "A small snake. Curve one way, then the other, between the middle and the baseline.",
   t: "Line down from near the top. Cross it near the middle line.",
-  u: "Line down, curve along the bottom, line up, and a short line back down.",
+  u: "Line down, curve along the bottom and back up. Then a short line down on the right side.",
   v: "From the middle line, slide down and back up.",
   w: "From the middle line: down, up, down, up.",
   x: "Two diagonals that cross between the middle line and the baseline.",
-  y: "From the middle, slide down and up like a v, then continue the last stroke under the baseline.",
+  y: "Slant down to the baseline. Then start at the top right and slant all the way down under the baseline.",
   z: "Across, diagonal down, across. Keep it between the middle line and the baseline."
 };
 
@@ -299,6 +339,7 @@ const state = {
   color: "#2f6fed",
   size: 16,
   style: "dotted",
+  numbers: localStorage.getItem("letterTraceNumbers") !== "0",
   progress: JSON.parse(localStorage.getItem("letterTraceProgress") || "{}")
 };
 const boards = [makeBoard(0), makeBoard(1)];
@@ -313,7 +354,11 @@ function makeBoard(i) {
     gctx: guide.getContext("2d"),
     strokes: [],
     current: null,
-    pointer: null
+    pointer: null,
+    fig: null,
+    T: null,
+    placed: [],
+    feedback: null
   };
 }
 
@@ -333,35 +378,58 @@ function dots(ctx) {
 
 function drawGuide(board, letter) {
   const canvas = board.guide;
-  const ctx = board.gctx;
   const rect = canvas.parentElement.getBoundingClientRect();
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.max(1, Math.floor(rect.width * dpr));
   canvas.height = Math.max(1, Math.floor(rect.height * dpr));
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, rect.width, rect.height);
+  board.gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // The guide letter is drawn from stroke data, so numbers, arrows and the
+  // tracing check line up exactly on every device.
+  board.fig = TraceKit.compose(letter);
+  board.T = TraceKit.layout(board.fig, rect.width, rect.height, { top: 0.18, base: 0.66, maxWidth: 0.84 });
+  board.placed = TraceKit.place(board.fig, board.T);
+  paintGuide(board);
+}
+
+function paintGuide(board, opts) {
+  const ctx = board.gctx, T = board.T;
+  if (!T) return;
+  ctx.clearRect(0, 0, T.w, T.h);
   if (document.body.classList.contains("noguide")) return;
-  const top = rect.height * 0.18;
-  const base = rect.height * 0.66;
-  const target = base - top;
-  const family = '"Chalkboard SE", "Comic Sans MS", "Marker Felt", cursive';
-  ctx.font = "200px " + family;
-  const ascent = ctx.measureText(letter).actualBoundingBoxAscent || 140;
-  const size = Math.max(40, 200 * (target / ascent));
-  ctx.font = size + "px " + family;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
-  ctx.lineJoin = "round";
-  if (state.style === "solid") {
-    ctx.fillStyle = "rgba(126, 160, 196, 0.30)";
-    ctx.strokeStyle = "rgba(96, 132, 170, 0.55)";
-    ctx.lineWidth = Math.max(2, size * 0.025);
-    ctx.fillText(letter, rect.width / 2, base);
-    ctx.strokeText(letter, rect.width / 2, base);
-  } else {
-    ctx.fillStyle = dots(ctx);
-    ctx.fillText(letter, rect.width / 2, base);
-  }
+  TraceKit.drawGuide(ctx, board.placed, T, { style: state.style, pattern: dots(ctx) });
+  if (state.numbers && !(opts && opts.noNumbers)) TraceKit.drawOrder(ctx, board.placed, T);
+}
+
+let stopShows = [];
+function stopShow() {
+  stopShows.forEach(f => f());
+  stopShows = [];
+  document.getElementById("showBtn").classList.remove("playing");
+  boards.forEach(b => paintGuide(b));
+}
+function showMe() {
+  stopShow();
+  const active = boards.filter(b => !b.canvas.closest(".board").hidden);
+  let left = active.length;
+  document.getElementById("showBtn").classList.add("playing");
+  active.forEach(b => {
+    stopShows.push(TraceKit.animate(b.gctx, b.placed, b.T, {
+      drawBase: () => paintGuide(b, { noNumbers: true }),
+      onDone: () => {
+        paintGuide(b);
+        if (--left === 0) { stopShows = []; document.getElementById("showBtn").classList.remove("playing"); }
+      }
+    }));
+  });
+}
+
+let toastTimer = 0;
+function toast(html, kind) {
+  const t = document.getElementById("toast");
+  t.innerHTML = html;
+  t.className = "toast show " + (kind || "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = "toast " + (kind || ""); }, 2600);
 }
 
 function glyph(upper) {
@@ -394,6 +462,9 @@ function render() {
 }
 
 function resize() {
+  stopShows.forEach(f => f());
+  stopShows = [];
+  document.getElementById("showBtn").classList.remove("playing");
   const g0 = state.mode === "lower" ? glyph(false) : glyph(true);
   const g1 = glyph(false);
   boards.forEach((b, i) => {
@@ -403,6 +474,7 @@ function resize() {
     b.canvas.width = Math.max(1, Math.floor(rect.width * dpr));
     b.canvas.height = Math.max(1, Math.floor(rect.height * dpr));
     b.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    b.feedback = null;
     drawGuide(b, i === 0 ? g0 : g1);
     redraw(b);
   });
@@ -413,6 +485,7 @@ function redraw(b) {
   b.ctx.clearRect(0, 0, rect.width, rect.height);
   b.strokes.forEach(s => paint(b.ctx, s));
   if (b.current) paint(b.ctx, b.current);
+  if (b.feedback && b.T) TraceKit.drawFeedback(b.ctx, b.feedback, b.T);
 }
 
 function paint(ctx, stroke) {
@@ -444,6 +517,7 @@ boards.forEach(board => {
     if (board.pointer !== null) return;
     c.setPointerCapture(e.pointerId);
     board.pointer = e.pointerId;
+    board.feedback = null;
     board.current = { color: state.color, size: state.size, points: [pos(board, e)] };
     redraw(board);
   });
@@ -474,7 +548,11 @@ function buildAlpha() {
   });
 }
 
-function clearAll() { boards.forEach(b => { b.strokes = []; b.current = null; }); }
+function clearAll() {
+  boards.forEach(b => { b.strokes = []; b.current = null; b.feedback = null; });
+  const t = document.getElementById("toast");
+  if (t) t.classList.remove("show");
+}
 
 document.getElementById("mode").addEventListener("click", e => {
   const btn = e.target.closest("button");
@@ -502,7 +580,7 @@ document.getElementById("swatches").addEventListener("click", e => {
 document.getElementById("size").addEventListener("input", e => state.size = Number(e.target.value));
 document.getElementById("clear").addEventListener("click", () => { clearAll(); resize(); });
 document.getElementById("undo").addEventListener("click", () => {
-  boards.forEach(b => { if (b.strokes.length) b.strokes.pop(); redraw(b); });
+  boards.forEach(b => { if (b.strokes.length) b.strokes.pop(); b.feedback = null; redraw(b); });
 });
 document.getElementById("next").addEventListener("click", () => {
   state.index = (state.index + 1) % 26; clearAll(); render();
@@ -510,7 +588,38 @@ document.getElementById("next").addEventListener("click", () => {
 document.getElementById("prev").addEventListener("click", () => {
   state.index = (state.index + 25) % 26; clearAll(); render();
 });
+document.getElementById("showBtn").addEventListener("click", () => {
+  if (stopShows.length) stopShow(); else showMe();
+});
+document.getElementById("numBtn").addEventListener("click", () => {
+  state.numbers = !state.numbers;
+  localStorage.setItem("letterTraceNumbers", state.numbers ? "1" : "0");
+  const btn = document.getElementById("numBtn");
+  btn.classList.toggle("active", state.numbers);
+  btn.setAttribute("aria-pressed", String(state.numbers));
+  if (!stopShows.length) boards.forEach(b => paintGuide(b));
+});
+document.getElementById("numBtn").classList.toggle("active", state.numbers);
+
+// Only award the green dot when every visible board was traced on the line.
+function checkTracing() {
+  const active = boards.filter(b => !b.canvas.closest(".board").hidden);
+  const results = active.map(b => {
+    const r = TraceKit.check(b.placed, b.T, b.strokes, TRACE_RULES);
+    b.feedback = r.pass ? null : r;
+    redraw(b);
+    return r;
+  });
+  const order = ["off", "partial", "order", "empty"];
+  const failed = results.filter(r => !r.pass).sort((a, b) => order.indexOf(a.reason) - order.indexOf(b.reason));
+  return { pass: !failed.length, reason: failed.length ? failed[0].reason : null, hint: results.some(r => r.hint), results };
+}
+
 document.getElementById("done").addEventListener("click", () => {
+  const result = checkTracing();
+  window.lastTraceCheck = result;
+  if (!result.pass) { toast(MESSAGES[result.reason] || MESSAGES.off, "oops"); return; }
+  toast(result.hint ? MESSAGES.passHint : MESSAGES.pass, "yay");
   const L = letters[state.index];
   if (state.mode !== "lower") state.progress[L] = 1;
   if (state.mode !== "upper") state.progress[L.toLowerCase()] = 1;
