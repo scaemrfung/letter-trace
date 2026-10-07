@@ -265,7 +265,7 @@ const TRACE_RULES = {
   inkTolerance: 0.11,      // "on the letter" = within 11% of letter height of a stroke's centre, plus half the pen width
   coverageMin: 0.80,       // at least 80% of the letter must be traced
   strokeCoverageMin: 0.75, // and every stroke (each line, curve or dot) at least 75%
-  coverRadius: 0.12,       // a part of the letter counts as traced when ink comes this close
+  coverRadius: 0.08,       // a part of the letter counts as traced when ink comes this close
   orderCheck: "hint"       // "off", "hint" (friendly tip, still earns the dot) or "strict" (wrong order = try again)
 };
 const MESSAGES = {
@@ -386,9 +386,19 @@ function drawGuide(board, letter) {
   // The guide letter is drawn from stroke data, so numbers, arrows and the
   // tracing check line up exactly on every device.
   board.fig = TraceKit.compose(letter);
-  board.T = TraceKit.layout(board.fig, rect.width, rect.height, { top: 0.18, base: 0.66, maxWidth: 0.84 });
+  board.T = TraceKit.layout(board.fig, rect.width, rect.height, Object.assign({ maxWidth: 0.84 }, linePx(canvas.parentElement)));
   board.placed = TraceKit.place(board.fig, board.T);
   paintGuide(board);
+}
+
+// Centre of the top line and baseline inside a board, so guides sit exactly on the drawn lines.
+function linePx(boardEl) {
+  const br = boardEl.getBoundingClientRect();
+  const y = cls => {
+    const r = boardEl.querySelector(".rule." + cls);
+    return r.getBoundingClientRect().top - br.top + parseFloat(getComputedStyle(r).borderTopWidth) / 2;
+  };
+  return { topPx: y("top"), basePx: y("base") };
 }
 
 function paintGuide(board, opts) {

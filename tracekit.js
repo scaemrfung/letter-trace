@@ -17,10 +17,10 @@
   "use strict";
 
   const DEFAULTS = {
-    guideWidth: 14,          // thickness of the guide letter, letter units (top line to baseline = 100)
+    guideWidth: 12,          // thickness of the guide letter, letter units (top line to baseline = 100)
     inkTolerance: 0.11,      // ink is "on the line" within this share of letter height from a stroke's centre (+ half the pen width)
     inkOnLineMin: 0.85,      // share of drawn ink that must be on the line
-    coverRadius: 0.12,       // a spot on the letter counts as traced when ink comes this close (share of letter height, + half the pen width)
+    coverRadius: 0.08,       // a spot on the letter counts as traced when ink comes this close (share of letter height, + half the pen width)
     coverageMin: 0.80,       // share of the whole letter that must be traced
     strokeCoverageMin: 0.75, // every single stroke (line, curve or dot) must be at least this traced
     orderCheck: "hint",      // "off" | "hint" (friendly tip, still passes) | "strict" (wrong order or direction fails)
@@ -70,7 +70,7 @@
     N: [L(-32, 0, -32, 100), L(-32, 0, 32, 100, 32, 0)],
     O: [A(0, 50, 47, 50, -90, -450)],
     P: [L(-30, 0, -30, 100), P(L(-30, 0, 5, 0), A(5, 27, 27, 27, -90, 90), L(5, 54, -30, 54))],
-    Q: [A(0, 50, 47, 50, -90, -450), L(12, 68, 42, 104)],
+    Q: [A(0, 50, 47, 50, -90, -450), L(14, 70, 40, 100)],
     R: [L(-30, 0, -30, 100), P(L(-30, 0, 5, 0), A(5, 26, 26, 26, -90, 90), L(5, 52, -30, 52), L(-30, 52, 32, 100))],
     S: [P(A(0, 25, 30, 25, -30, -270), A(0, 75, 33, 25, -90, 150))],
     T: [L(0, 0, 0, 100), L(-35, 0, 35, 0)],
@@ -86,7 +86,7 @@
     c: [A(0, 75, 24, 25, -40, -320)],
     d: [A(-2, 75, 24, 25, -40, -400), L(22, 0, 22, 100)],
     e: [P(L(-24, 75, 24, 75), A(0, 75, 24, 25, 0, -320))],
-    f: [P(A(12, 15, 14, 15, -30, -180), L(-2, 15, -2, 100)), L(-20, 50, 18, 50)],
+    f: [P(A(15, 15, 17, 15, -30, -180), L(-2, 15, -2, 100)), L(-20, 50, 18, 50)],
     g: [A(-2, 75, 24, 25, -40, -400), P(L(22, 50, 22, 118), A(2, 118, 20, 22, 0, 165))],
     h: [L(-22, 0, -22, 100), P(A(0, 73, 22, 23, 180, 360), L(22, 73, 22, 100))],
     i: [L(0, 50, 0, 100), D(0, 30)],
@@ -98,7 +98,7 @@
     o: [A(0, 75, 25, 25, -90, -450)],
     p: [L(-22, 50, -22, 140), A(2, 75, 24, 25, 180, 540)],
     q: [A(-2, 75, 24, 25, -40, -400), P(L(22, 50, 22, 130), A(32, 130, 10, 10, 180, 90), L(32, 140, 40, 134))],
-    r: [L(-16, 50, -16, 100), A(4, 72, 20, 20, 180, 315)],
+    r: [L(-16, 50, -16, 100), A(4, 70, 20, 20, 180, 315)],
     s: [P(A(0, 62.5, 18, 12.5, -30, -270), A(0, 87.5, 20, 12.5, -90, 150))],
     t: [L(0, 10, 0, 100), L(-20, 50, 20, 50)],
     u: [P(L(-22, 50, -22, 78), A(0, 78, 22, 22, 180, 0), L(22, 78, 22, 50)), L(22, 50, 22, 100)],
@@ -128,18 +128,36 @@
     return { minX, maxX, minY, maxY };
   }
 
-  // Build a figure (one letter or a whole word) in letter units.
+  // Glyph data is drawn on the line centres (0 top, 50 middle, 100 base). The guide has a
+  // thickness, so fitToLines() pulls the centre-line in by half that thickness: the visible
+  // edge of capitals, digits and tall letters then sits exactly on the top line and baseline,
+  // and the body of short letters exactly between the middle line and baseline.
+  // Tails (g j p q y) go below the baseline but stay above the tail line.
+  function fitToLines(p, lower, W) {
+    const ku = (100 - W) / 100, kl = (50 - W) / 50, kd = 0.9, x = p[0], y = p[1];
+    if (!lower) return [x * ku, W / 2 + y * ku];
+    let fy;
+    if (y <= 50) fy = W / 2 + y;                       // tall part of b d f h k l t, i/j dots
+    else if (y <= 100) fy = 50 + W / 2 + (y - 50) * kl; // body: middle line to baseline
+    else fy = 100 - W / 2 + (y - 100) * kd;            // tail under the baseline
+    return [x * kl, fy];
+  }
+
+  // Build a figure (one letter or a whole word) in line units.
   function compose(text, opts) {
     opts = opts || {};
     const gap = opts.gap != null ? opts.gap : 26, space = opts.space != null ? opts.space : 50;
+    const W = opts.guideWidth || DEFAULTS.guideWidth;
     const strokes = [], letters = [];
     let x = 0, li = 0;
     for (const ch of String(text)) {
       if (ch === " ") { x += space; continue; }
       const g = GLYPHS[ch];
       if (!g) continue;
-      const b = glyphBox(g), dx = x - b.minX;
-      g.forEach((st, k) => {
+      const lower = /[a-z]/.test(ch);
+      const fg = opts.fit === false ? g : g.map(st => st.dot ? { dot: fitToLines(st.dot, lower, W) } : st.map(p => fitToLines(p, lower, W)));
+      const b = glyphBox(fg), dx = x - b.minX;
+      fg.forEach((st, k) => {
         const pts = st.dot ? [[st.dot[0] + dx, st.dot[1]]] : densify(st.map(p => [p[0] + dx, p[1]]), 2);
         strokes.push({ pts, dot: !!st.dot, num: k + 1, letter: li, char: ch });
       });
@@ -155,7 +173,8 @@
   function layout(fig, w, h, opts) {
     opts = opts || {};
     const top = opts.top != null ? opts.top : 0.18, base = opts.base != null ? opts.base : 0.66;
-    let s = opts.scale || h * (base - top) / 100, oy = h * top, sx = s;
+    const topPx = opts.topPx != null ? opts.topPx : h * top, basePx = opts.basePx != null ? opts.basePx : h * base;
+    let s = opts.scale || (basePx - topPx) / 100, oy = topPx, sx = s;
     // Too wide for a narrow board (e.g. W in portrait "Both")? Make it a bit narrower so it
     // still fits the lines; only if that isn't enough, shrink it while keeping it on the baseline.
     if (opts.maxWidth && isFinite(fig.minX)) {
@@ -163,7 +182,7 @@
       const fit = opts.maxWidth * w / span;
       if (fit < s) {
         sx = Math.max(fit, s * 0.72);
-        if (fit < sx) { s = fit / 0.72; sx = fit; oy = h * base - 100 * s; }
+        if (fit < sx) { s = fit / 0.72; sx = fit; oy = basePx - 100 * s; }
       }
     }
     const cx = isFinite(fig.minX) ? (fig.minX + fig.maxX) / 2 : 0;
@@ -212,8 +231,9 @@
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     guidePath(ctx, placed);
     if (opts.style === "solid") {
-      ctx.strokeStyle = "#a8bacd"; ctx.lineWidth = W + Math.max(3, W * 0.14); ctx.stroke();
-      ctx.strokeStyle = "#d9e3ec"; ctx.lineWidth = W; ctx.stroke();
+      // Outline stays inside the guide thickness so nothing pokes past the lines.
+      ctx.strokeStyle = "#a8bacd"; ctx.lineWidth = W; ctx.stroke();
+      ctx.strokeStyle = "#d9e3ec"; ctx.lineWidth = Math.max(2, W - 2 * Math.max(1.5, W * 0.07)); ctx.stroke();
     } else {
       ctx.strokeStyle = "rgba(126, 160, 196, 0.13)"; ctx.lineWidth = W; ctx.stroke();
       if (opts.pattern) { ctx.strokeStyle = opts.pattern; ctx.stroke(); }
