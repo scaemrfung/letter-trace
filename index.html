@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Letter Trace">
+<title>Letter Trace · Upper & Lower Case</title>
+<style>
+  :root {
+    --ink: #243044;
+    --muted: #5d6b7c;
+    --paper: #fffdf8;
+    --sky: #e7f0f8;
+    --line: #7eafd6;
+    --mid: #e28b93;
+    --blue: #2f6fed;
+    --green: #1f9d62;
+    --coral: #e36b4f;
+    --shadow: 0 10px 30px rgba(36, 48, 68, 0.08);
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background:
+      radial-gradient(1200px 500px at 10% -10%, #fff 0%, transparent 50%),
+      linear-gradient(180deg, #f3f7fb 0%, #e7eef5 100%);
+    color: var(--ink);
+    font-family: "Avenir Next", "Nunito", "Trebuchet MS", system-ui, sans-serif;
+    overscroll-behavior: none;
+  }
+  body {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: calc(10px + var(--safe-t)) 14px calc(12px + var(--safe-b));
+    gap: 10px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 180px; }
+  .mark {
+    width: 42px; height: 42px; border-radius: 13px;
+    background: linear-gradient(145deg, #4d86f5, #2f6fed);
+    color: white; display: grid; place-items: center;
+    font-family: "Chalkboard SE", "Comic Sans MS", "Marker Felt", cursive;
+    font-size: 24px; box-shadow: 0 6px 14px rgba(47, 111, 237, 0.28);
+  }
+  h1 { font-size: 20px; margin: 0; letter-spacing: -0.03em; }
+  h1 span { display: block; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+  .seg, .tools, .alpha, .inkbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button, .seg button {
+    border: 0; background: white; color: var(--ink);
+    border-radius: 12px; padding: 10px 14px; font: inherit; font-weight: 700;
+    box-shadow: 0 1px 0 rgba(36,48,68,0.04), 0 0 0 1px rgba(36,48,68,0.06);
+    cursor: pointer;
+  }
+  button:active { transform: translateY(1px); }
+  button.active, .seg button.active {
+    background: var(--ink); color: white; box-shadow: none;
+  }
+  button.good { background: var(--green); color: white; }
+  button.warn { background: #fff; color: var(--coral); }
+  .stage {
+    flex: 1;
+    min-height: 280px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  body.both .stage { grid-template-columns: 1fr 1fr; }
+  .board {
+    position: relative;
+    background: var(--paper);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    min-height: 320px;
+    touch-action: none;
+    container-type: size;
+  }
+  .rules, canvas { position: absolute; inset: 0; }
+  .rules { pointer-events: none; }
+  .rule {
+    position: absolute; left: 8%; right: 6%; height: 0;
+    border-top: 2px solid var(--line);
+  }
+  .rule.top { top: 18%; }
+  .rule.mid { top: 42%; border-top: 2px dashed var(--mid); }
+  .rule.base { top: 66%; border-top: 3px solid #5f97c4; }
+  .rule.desc { top: 86%; border-top: 2px solid #b7d3ea; }
+  .rule-label {
+    position: absolute; left: 8px; font-size: 10px; font-weight: 800;
+    letter-spacing: 0.05em; text-transform: uppercase; color: #8aa0b5;
+    transform: translateY(-13px);
+  }
+  .guide { display: none; }
+  .guide-canvas {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  canvas { width: 100%; height: 100%; touch-action: none; }
+  .case-tag {
+    position: absolute; top: 10px; left: 12px; z-index: 2;
+    font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #7d90a4;
+    background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 999px;
+  }
+  .tip {
+    background: white; border-radius: 14px; padding: 10px 14px;
+    color: var(--muted); font-size: 15px; box-shadow: 0 0 0 1px rgba(36,48,68,0.05);
+  }
+  .tip strong { color: var(--ink); }
+  .inkbar { justify-content: space-between; }
+  .swatches { display: flex; gap: 8px; }
+  .swatch {
+    width: 34px; height: 34px; border-radius: 50%; padding: 0;
+    box-shadow: inset 0 0 0 2px white, 0 0 0 1px rgba(36,48,68,0.12);
+  }
+  .swatch.active { outline: 3px solid var(--ink); outline-offset: 2px; }
+  input[type="range"] { width: 120px; accent-color: var(--blue); }
+  .alpha {
+    overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .alpha button {
+    min-width: 44px; height: 44px; padding: 0; position: relative; flex: 0 0 auto;
+    font-family: "Chalkboard SE", "Comic Sans MS", cursive; font-size: 20px;
+  }
+  .alpha button.done::after {
+    content: ""; position: absolute; right: 5px; top: 5px;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+  }
+  .help { font-size: 13px; color: var(--muted); }
+  details.helpbox {
+    background: white; border-radius: 14px; padding: 8px 12px;
+    box-shadow: 0 0 0 1px rgba(36,48,68,0.05);
+  }
+  details.helpbox summary { cursor: pointer; font-weight: 800; }
+  .burst {
+    position: fixed; inset: 0; pointer-events: none; z-index: 5;
+  }
+  .star {
+    position: absolute; font-size: 28px; animation: pop 900ms ease-out forwards;
+  }
+  @keyframes pop {
+    0% { transform: translateY(0) scale(0.4); opacity: 0; }
+    30% { opacity: 1; }
+    100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
+  }
+  @media (max-width: 800px) {
+    body.both .stage { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="mark">Aa</div>
+      <h1>Letter Trace<span>Finger or Apple Pencil · iPad</span></h1>
+    </div>
+    <div class="seg" id="mode">
+      <button data-mode="upper" class="active">UPPER</button>
+      <button data-mode="lower">lower</button>
+      <button data-mode="both">Both</button>
+    </div>
+    <div class="seg">
+      <button id="guideBtn" class="active">Dotted guide</button>
+      <button id="styleBtn">Solid guide</button>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <div class="board" data-board="0">
+      <div class="case-tag" id="tag0">Upper case</div>
+      <div class="rules" aria-hidden="true">
+        <div class="rule top"><span class="rule-label">top</span></div>
+        <div class="rule mid"><span class="rule-label">middle</span></div>
+        <div class="rule base"><span class="rule-label">base</span></div>
+        <div class="rule desc"><span class="rule-label">tail</span></div>
+      </div>
+      <div class="guide" id="guide0">A</div>
+      <canvas class="guide-canvas" id="g0"></canvas>
+      <canvas id="c0"></canvas>
+    </div>
+    <div class="board" data-board="1" id="board1" hidden>
+      <div class="case-tag">Lower case</div>
+      <div class="rules" aria-hidden="true">
+        <div class="rule top"><span class="rule-label">top</span></div>
+        <div class="rule mid"><span class="rule-label">middle</span></div>
+        <div class="rule base"><span class="rule-label">base</span></div>
+        <div class="rule desc"><span class="rule-label">tail</span></div>
+      </div>
+      <div class="guide" id="guide1">a</div>
+      <canvas class="guide-canvas" id="g1"></canvas>
+      <canvas id="c1"></canvas>
+    </div>
+  </div>
+
+  <div class="tip" id="tip"><strong>A:</strong> Start at the top. Slide down to the left, slide down to the right, then a line across the middle.</div>
+
+  <div class="inkbar">
+    <div class="swatches" id="swatches">
+      <button class="swatch active" data-color="#2f6fed" style="background:#2f6fed" aria-label="Blue"></button>
+      <button class="swatch" data-color="#e36b4f" style="background:#e36b4f" aria-label="Coral"></button>
+      <button class="swatch" data-color="#1f9d62" style="background:#1f9d62" aria-label="Green"></button>
+      <button class="swatch" data-color="#7a4de0" style="background:#7a4de0" aria-label="Purple"></button>
+      <button class="swatch" data-color="#f0a202" style="background:#f0a202" aria-label="Gold"></button>
+      <button class="swatch" data-color="#243044" style="background:#243044" aria-label="Black"></button>
+    </div>
+    <label class="help">Pen <input id="size" type="range" min="6" max="28" value="16"></label>
+    <div class="tools">
+      <button id="undo">Undo</button>
+      <button id="clear" class="warn">Clear</button>
+      <button id="prev">Prev</button>
+      <button id="next">Next</button>
+      <button id="done" class="good">I traced it</button>
+    </div>
+  </div>
+
+  <div class="alpha" id="alpha"></div>
+  <details class="helpbox">
+    <summary>How to use this on an iPad</summary>
+    <p class="help">Open this page in Safari. Tap Share, then Add to Home Screen, so it opens like an app. Turn the iPad sideways for a bigger board. Trace on the dotted letter with a finger or Apple Pencil. Pink dashed line is the middle. Dark blue line is the baseline. Letters with tails (g, j, p, q, y) go under the baseline. Tap I traced it to save a green dot. Progress stays on this iPad.</p>
+  </details>
+  <div class="burst" id="burst"></div>
+<script>
+const TIPS = {
+  A: "Start at the top. Slide down left, slide down right, then a line across the middle.",
+  B: "Start at the top. Straight line down, then a curve on top and a curve on the bottom.",
+  C: "Start near the top. Curve back and around, like a smile lying on its side. Leave it open.",
+  D: "Start at the top. Straight line down, then a big curve from top to bottom.",
+  E: "Start at the top. Line down, then three lines out: top, middle, bottom.",
+  F: "Start at the top. Line down, then a line at the top and a shorter line in the middle.",
+  G: "Start near the top. Curve around like C, then a short line in on the right.",
+  H: "Two straight lines down. Connect them across the middle.",
+  I: "Start at the top. One straight line down. A small line across the top and the bottom.",
+  J: "Start at the top. Line down, then curve to the left at the bottom.",
+  K: "Straight line down. From the middle, a diagonal up and a diagonal down.",
+  L: "Start at the top. Line down, then a line across the bottom to the right.",
+  M: "Start at the top. Line down, then two mountains back up to the top line.",
+  N: "Line down, diagonal down to the bottom, then line up.",
+  O: "Start at the top. Curve all the way around until you meet the start.",
+  P: "Line down from the top. Curve out and back to the middle.",
+  Q: "Make an O. Then a short diagonal tail at the bottom right.",
+  R: "Line down. Curve out and back to the middle, then a diagonal leg.",
+  S: "Start at the top. Curve left, then curve the other way, like a snake.",
+  T: "Start at the top. Line across, then a line down from the middle.",
+  U: "Line down, curve along the bottom, line back up.",
+  V: "Start at the top. Slide down to a point, then back up.",
+  W: "Like two Vs. Down, up, down, up.",
+  X: "Slide down from the top left. Then slide the other way from the top right.",
+  Y: "Two short diagonals meet in the middle, then one line down.",
+  Z: "Line across the top, diagonal down to the left, line across the bottom.",
+  a: "Start at the middle line. Curve around like a circle, then a short line down to the baseline.",
+  b: "Line down from the top. At the middle, curve around to make a ball.",
+  c: "Start at the middle line. Curve back and around. Leave it open.",
+  d: "Start at the middle. Curve around, then a straight line up to the top and back down.",
+  e: "Start in the middle of the letter. Line across, then curve around.",
+  f: "Curve up at the top, line down past the baseline, then a short line across.",
+  g: "Circle from the middle line, then a tail that curves under the baseline.",
+  h: "Line down from the top. From the middle, bump out and down to the baseline.",
+  i: "Short line from the middle line down. Then a dot above it.",
+  j: "Short line down past the baseline and curve left. Then a dot.",
+  k: "Line down from the top. From the middle, a diagonal in and a diagonal out.",
+  l: "Start at the top. One long straight line down to the baseline.",
+  m: "Short line down. Two bumps, like two hills, staying on the baseline.",
+  n: "Short line down. One bump out and down to the baseline.",
+  o: "Start at the middle line. Curve all the way around.",
+  p: "Line down past the baseline. From the middle, curve around to make a ball.",
+  q: "Circle on the baseline. Line down past the baseline, then a little flick.",
+  r: "Short line down. From the top, a small curve out.",
+  s: "A small snake. Curve one way, then the other, between the middle and the baseline.",
+  t: "Line down from near the top. Cross it near the middle line.",
+  u: "Line down, curve along the bottom, line up, and a short line back down.",
+  v: "From the middle line, slide down and back up.",
+  w: "From the middle line: down, up, down, up.",
+  x: "Two diagonals that cross between the middle line and the baseline.",
+  y: "From the middle, slide down and up like a v, then continue the last stroke under the baseline.",
+  z: "Across, diagonal down, across. Keep it between the middle line and the baseline."
+};
+
+const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const state = {
+  index: 0,
+  mode: "upper",
+  color: "#2f6fed",
+  size: 16,
+  style: "dotted",
+  progress: JSON.parse(localStorage.getItem("letterTraceProgress") || "{}")
+};
+const boards = [makeBoard(0), makeBoard(1)];
+
+function makeBoard(i) {
+  const canvas = document.getElementById("c" + i);
+  const guide = document.getElementById("g" + i);
+  return {
+    canvas,
+    guide,
+    ctx: canvas.getContext("2d"),
+    gctx: guide.getContext("2d"),
+    strokes: [],
+    current: null,
+    pointer: null
+  };
+}
+
+let dotPattern = null;
+function dots(ctx) {
+  if (dotPattern) return dotPattern;
+  const c = document.createElement("canvas");
+  c.width = 14; c.height = 14;
+  const g = c.getContext("2d");
+  g.fillStyle = "#7f9dba";
+  g.beginPath();
+  g.arc(2, 2, 1.8, 0, Math.PI * 2);
+  g.fill();
+  dotPattern = ctx.createPattern(c, "repeat");
+  return dotPattern;
+}
+
+function drawGuide(board, letter) {
+  const canvas = board.guide;
+  const ctx = board.gctx;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  if (document.body.classList.contains("noguide")) return;
+  const top = rect.height * 0.18;
+  const base = rect.height * 0.66;
+  const target = base - top;
+  const family = '"Chalkboard SE", "Comic Sans MS", "Marker Felt", cursive';
+  ctx.font = "200px " + family;
+  const ascent = ctx.measureText(letter).actualBoundingBoxAscent || 140;
+  const size = Math.max(40, 200 * (target / ascent));
+  ctx.font = size + "px " + family;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.lineJoin = "round";
+  if (state.style === "solid") {
+    ctx.fillStyle = "rgba(126, 160, 196, 0.30)";
+    ctx.strokeStyle = "rgba(96, 132, 170, 0.55)";
+    ctx.lineWidth = Math.max(2, size * 0.025);
+    ctx.fillText(letter, rect.width / 2, base);
+    ctx.strokeText(letter, rect.width / 2, base);
+  } else {
+    ctx.fillStyle = dots(ctx);
+    ctx.fillText(letter, rect.width / 2, base);
+  }
+}
+
+function glyph(upper) {
+  const L = letters[state.index];
+  return upper ? L : L.toLowerCase();
+}
+
+function render() {
+  const both = state.mode === "both";
+  document.body.classList.toggle("both", both);
+  document.body.classList.toggle("solid", state.style === "solid");
+  document.getElementById("board1").hidden = !both;
+  const g0 = state.mode === "lower" ? glyph(false) : glyph(true);
+  const g1 = glyph(false);
+  document.getElementById("guide0").textContent = g0;
+  document.getElementById("guide1").textContent = g1;
+  document.getElementById("tag0").textContent = state.mode === "lower" ? "Lower case" : "Upper case";
+  const key = state.mode === "lower" ? g0 : g0;
+  const lowerTip = TIPS[g1] ? " Lower: " + TIPS[g1] : "";
+  document.getElementById("tip").innerHTML = "<strong>" + g0 + (both ? " / " + g1 : "") + ":</strong> " + (TIPS[g0] || "") + (both ? lowerTip : "");
+  document.querySelectorAll("#mode button").forEach(b => b.classList.toggle("active", b.dataset.mode === state.mode));
+  document.querySelectorAll("#alpha button").forEach((b, i) => {
+    b.classList.toggle("active", i === state.index);
+    const L = letters[i];
+    const mark = state.mode === "lower" ? state.progress[L.toLowerCase()] : state.progress[L];
+    b.classList.toggle("done", !!mark);
+    b.textContent = state.mode === "lower" ? L.toLowerCase() : L;
+  });
+  resize();
+}
+
+function resize() {
+  const g0 = state.mode === "lower" ? glyph(false) : glyph(true);
+  const g1 = glyph(false);
+  boards.forEach((b, i) => {
+    if (b.canvas.closest(".board").hidden) return;
+    const rect = b.canvas.parentElement.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    b.canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    b.canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+    b.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawGuide(b, i === 0 ? g0 : g1);
+    redraw(b);
+  });
+}
+
+function redraw(b) {
+  const rect = b.canvas.getBoundingClientRect();
+  b.ctx.clearRect(0, 0, rect.width, rect.height);
+  b.strokes.forEach(s => paint(b.ctx, s));
+  if (b.current) paint(b.ctx, b.current);
+}
+
+function paint(ctx, stroke) {
+  if (!stroke.points.length) return;
+  ctx.strokeStyle = stroke.color;
+  ctx.lineWidth = stroke.size;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+  for (let i = 1; i < stroke.points.length - 1; i++) {
+    const midX = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
+    const midY = (stroke.points[i].y + stroke.points[i + 1].y) / 2;
+    ctx.quadraticCurveTo(stroke.points[i].x, stroke.points[i].y, midX, midY);
+  }
+  const last = stroke.points[stroke.points.length - 1];
+  ctx.lineTo(last.x, last.y);
+  ctx.stroke();
+}
+
+function pos(board, e) {
+  const r = board.canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+boards.forEach(board => {
+  const c = board.canvas;
+  c.addEventListener("pointerdown", e => {
+    if (board.pointer !== null) return;
+    c.setPointerCapture(e.pointerId);
+    board.pointer = e.pointerId;
+    board.current = { color: state.color, size: state.size, points: [pos(board, e)] };
+    redraw(board);
+  });
+  c.addEventListener("pointermove", e => {
+    if (e.pointerId !== board.pointer || !board.current) return;
+    const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    events.forEach(ev => board.current.points.push(pos(board, ev)));
+    redraw(board);
+  });
+  const end = e => {
+    if (e.pointerId !== board.pointer) return;
+    if (board.current && board.current.points.length) board.strokes.push(board.current);
+    board.current = null;
+    board.pointer = null;
+    redraw(board);
+  };
+  c.addEventListener("pointerup", end);
+  c.addEventListener("pointercancel", end);
+});
+
+function buildAlpha() {
+  const row = document.getElementById("alpha");
+  letters.forEach((L, i) => {
+    const b = document.createElement("button");
+    b.textContent = L;
+    b.addEventListener("click", () => { state.index = i; clearAll(); render(); });
+    row.appendChild(b);
+  });
+}
+
+function clearAll() { boards.forEach(b => { b.strokes = []; b.current = null; }); }
+
+document.getElementById("mode").addEventListener("click", e => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  state.mode = btn.dataset.mode;
+  clearAll();
+  render();
+});
+document.getElementById("guideBtn").addEventListener("click", () => {
+  document.body.classList.toggle("noguide");
+  document.getElementById("guideBtn").classList.toggle("active");
+  resize();
+});
+document.getElementById("styleBtn").addEventListener("click", () => {
+  state.style = state.style === "dotted" ? "solid" : "dotted";
+  document.getElementById("styleBtn").textContent = state.style === "dotted" ? "Solid guide" : "Dotted guide";
+  render();
+});
+document.getElementById("swatches").addEventListener("click", e => {
+  const btn = e.target.closest(".swatch");
+  if (!btn) return;
+  state.color = btn.dataset.color;
+  document.querySelectorAll(".swatch").forEach(s => s.classList.toggle("active", s === btn));
+});
+document.getElementById("size").addEventListener("input", e => state.size = Number(e.target.value));
+document.getElementById("clear").addEventListener("click", () => { clearAll(); resize(); });
+document.getElementById("undo").addEventListener("click", () => {
+  boards.forEach(b => { if (b.strokes.length) b.strokes.pop(); redraw(b); });
+});
+document.getElementById("next").addEventListener("click", () => {
+  state.index = (state.index + 1) % 26; clearAll(); render();
+});
+document.getElementById("prev").addEventListener("click", () => {
+  state.index = (state.index + 25) % 26; clearAll(); render();
+});
+document.getElementById("done").addEventListener("click", () => {
+  const L = letters[state.index];
+  if (state.mode !== "lower") state.progress[L] = 1;
+  if (state.mode !== "upper") state.progress[L.toLowerCase()] = 1;
+  localStorage.setItem("letterTraceProgress", JSON.stringify(state.progress));
+  burst();
+  render();
+});
+
+function burst() {
+  const box = document.getElementById("burst");
+  box.innerHTML = "";
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement("div");
+    s.className = "star";
+    s.textContent = i % 2 ? "★" : "✦";
+    s.style.left = (20 + Math.random() * 60) + "%";
+    s.style.top = (40 + Math.random() * 30) + "%";
+    s.style.color = ["#2f6fed", "#e36b4f", "#1f9d62", "#f0a202"][i % 4];
+    box.appendChild(s);
+  }
+}
+
+window.addEventListener("resize", resize);
+buildAlpha();
+render();
+</script>
+</body>
+</html>
