@@ -88,6 +88,7 @@
 
   <div class="alpha words" id="alpha"></div>
   <div class="footer">
+  <button type="button" id="clearDots" class="dots">Clear green dots</button>
   <details class="helpbox">
     <summary>How to use this</summary>
     <p class="help">Trace the dotted word with a finger or Apple Pencil, one letter at a time. Coloured numbers show which line to make first in each letter, and arrows show which way to go. Tap Show me to watch the whole word being written, letter by letter. Tap I traced it when you are done: the green dot is only saved when every letter stays on the line and is fully traced. Letters that need another try are underlined. Teachers: press and hold Edit words to type or paste the word list (one per line, or separated by commas), then tap Share list to get a link that opens the same words on other iPads. The list and progress stay on this iPad.</p>
@@ -272,7 +273,8 @@ document.getElementById("shareBtn").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(url); msg("Link copied. Open it on the other iPads."); }
   catch (e) { box.select(); msg("Copy this link and open it on the other iPads."); }
 });
-document.getElementById("resetProgress").addEventListener("click", () => {
+document.getElementById("resetProgress").addEventListener("click", askClearDots);
+function askClearDots() {
   TracePage.confirmClear({
     count: Object.keys(state.progress).length,
     title: "Clear the green dots?",
@@ -285,7 +287,7 @@ document.getElementById("resetProgress").addEventListener("click", () => {
       render();
     }
   });
-});
+}
 
 function reloadProgress() {
   state.progress = ClassKit.mine(PROGRESS_KEY);
@@ -317,6 +319,7 @@ TracePage.init({
   }
 });
 reloadProgress();
+ClassKit.hold(document.getElementById("clearDots"), askClearDots);
 if (state.loadedFromLink) TracePage.toast("Loaded " + state.loadedFromLink + " words from the link 📋", "yay");
 </script>
 </body>
