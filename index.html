@@ -96,6 +96,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="tracekit.js"></script>
 <script src="trace-page.js"></script>
+<script src="class.js"></script>
 <script>
 /* Letters page. Shared logic and the tracing check settings (TRACE_RULES) are in trace-page.js. */
 const TIPS = {
@@ -157,16 +158,47 @@ const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const state = Object.assign(TracePage.state, {
   index: 0,
   mode: "upper",
-  progress: JSON.parse(localStorage.getItem("letterTraceProgress") || "{}")
+  progress: {}
 });
 const boards = TracePage.boards;
 
+function list() {
+  const picked = ClassKit.today("letterTraceToday");
+  if (!picked) return letters.slice();
+  const set = [];
+  picked.forEach(s => {
+    const L = String(s).toUpperCase();
+    if (letters.indexOf(L) >= 0 && set.indexOf(L) < 0) set.push(L);
+  });
+  return set.length ? set : letters.slice();
+}
+
 function glyph(upper) {
-  const L = letters[state.index];
+  const L = list()[state.index] || "A";
   return upper ? L : L.toLowerCase();
 }
 
+function needed() {
+  const rows = list();
+  if (state.mode === "both") return rows.reduce((all, L) => all.concat([L, L.toLowerCase()]), []);
+  if (state.mode === "lower") return rows.map(L => L.toLowerCase());
+  return rows.slice();
+}
+
+function finished() { return needed().every(g => state.progress[g]); }
+
+function say() {
+  const g0 = state.mode === "lower" ? glyph(false) : glyph(true);
+  const g1 = glyph(false);
+  const line = state.mode === "both"
+    ? "Capital " + g0 + ". " + (TIPS[g0] || "") + " Lowercase " + g1 + ". " + (TIPS[g1] || "")
+    : (state.mode === "lower" ? "Lowercase " : "Capital ") + g0 + ". " + (TIPS[g0] || "");
+  ClassKit.speak(line);
+}
+
 function render() {
+  const rows = list();
+  if (state.index >= rows.length) state.index = 0;
   const both = state.mode === "both";
   document.body.classList.toggle("both", both);
   document.body.classList.toggle("solid", state.style === "solid");
@@ -179,26 +211,32 @@ function render() {
   const lowerTip = TIPS[g1] ? " Lower: " + TIPS[g1] : "";
   document.getElementById("tip").innerHTML = "<strong>" + g0 + (both ? " / " + g1 : "") + ":</strong> " + (TIPS[g0] || "") + (both ? lowerTip : "");
   document.querySelectorAll("#mode button").forEach(b => b.classList.toggle("active", b.dataset.mode === state.mode));
-  document.querySelectorAll("#alpha button").forEach((b, i) => {
+  const alpha = document.getElementById("alpha");
+  alpha.innerHTML = "";
+  rows.forEach((L, i) => {
+    const b = document.createElement("button");
+    b.textContent = state.mode === "lower" ? L.toLowerCase() : L;
     b.classList.toggle("active", i === state.index);
-    const L = letters[i];
     const mark = state.mode === "lower" ? state.progress[L.toLowerCase()] : state.progress[L];
     b.classList.toggle("done", !!mark);
-    b.textContent = state.mode === "lower" ? L.toLowerCase() : L;
+    b.addEventListener("click", () => { state.index = i; clearAll(); render(); say(); });
+    alpha.appendChild(b);
+  });
+  const today = ClassKit.today("letterTraceToday");
+  ClassKit.setFinished(finished(), {
+    title: "You traced them",
+    body: ClassKit.label() + (today ? " finished today's letters." : " finished every letter.")
   });
   TracePage.resize();
 }
 
 function clearAll() { TracePage.clearAll(); }
 
-function buildAlpha() {
-  const row = document.getElementById("alpha");
-  letters.forEach((L, i) => {
-    const b = document.createElement("button");
-    b.textContent = L;
-    b.addEventListener("click", () => { state.index = i; clearAll(); render(); });
-    row.appendChild(b);
-  });
+function reloadProgress() {
+  state.progress = ClassKit.mine("letterTraceProgress");
+  state.index = 0;
+  clearAll();
+  render();
 }
 
 document.getElementById("mode").addEventListener("click", e => {
@@ -209,38 +247,49 @@ document.getElementById("mode").addEventListener("click", e => {
   render();
 });
 document.getElementById("next").addEventListener("click", () => {
-  state.index = (state.index + 1) % 26; clearAll(); render();
+  state.index = (state.index + 1) % list().length; clearAll(); render(); say();
 });
 document.getElementById("prev").addEventListener("click", () => {
-  state.index = (state.index + 25) % 26; clearAll(); render();
+  state.index = (state.index + list().length - 1) % list().length; clearAll(); render(); say();
+});
+
+ClassKit.mount({
+  onChange: reloadProgress,
+  today: {
+    key: "letterTraceToday",
+    title: "Today's letters",
+    choices: letters,
+    norm: function (s) { return String(s).toUpperCase(); }
+  }
 });
 
 TracePage.init({
   texts: () => [state.mode === "lower" ? glyph(false) : glyph(true), glyph(false)],
   render,
   onPass: () => {
-    const L = letters[state.index];
+    const before = finished();
+    const L = list()[state.index];
     if (state.mode !== "lower") state.progress[L] = 1;
     if (state.mode !== "upper") state.progress[L.toLowerCase()] = 1;
-    localStorage.setItem("letterTraceProgress", JSON.stringify(state.progress));
+    ClassKit.saveMine("letterTraceProgress", state.progress);
     render();
+    if (!before && finished()) ClassKit.showFinish();
   }
 });
-buildAlpha();
-render();
-document.getElementById("clearDots").addEventListener("click", () => {
+reloadProgress();
+ClassKit.hold(document.getElementById("clearDots"), () => {
   TracePage.confirmClear({
     count: Object.keys(state.progress).length,
     title: "Clear the green dots?",
-    body: "Every letter, upper and lower case, will look not traced. This only changes this iPad.",
+    body: "Every letter for " + ClassKit.label() + " will look not traced. This only changes this device.",
     empty: "No letters have a green dot yet.",
     onClear: () => {
       state.progress = {};
-      localStorage.setItem("letterTraceProgress", "{}");
+      ClassKit.saveMine("letterTraceProgress", state.progress);
       render();
     }
   });
-});
+}, "Press and hold to clear the green dots");
 </script>
 </body>
 </html>

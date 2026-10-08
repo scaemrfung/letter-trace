@@ -164,7 +164,16 @@
   .toast.oops { color: var(--coral); }
   .toast.yay { color: var(--green); }
   .toast small { display: block; font-size: 17px; font-weight: 700; color: var(--muted); margin-top: 4px; }
-  .footer { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+  .classbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .kids { display: flex; gap: 6px; overflow-x: auto; flex: 1 1 160px; min-width: 0; }
+  .kids button { flex: 0 0 auto; }
+  .choice-grid { display: flex; flex-wrap: wrap; gap: 6px; max-height: 46dvh; overflow: auto; margin-top: 12px; }
+  .choice-grid button { min-width: 42px; padding: 8px 0; }
+  .clear-dots-card textarea {
+    width: 100%; min-height: 120px; margin-top: 12px; font: inherit; font-size: 16px;
+    border-radius: 12px; border: 1px solid #c9d5e2; padding: 10px 12px;
+    user-select: text; -webkit-user-select: text; color: var(--ink);
+  }
   .footer details.helpbox { flex: 1 1 260px; }
   button.dots { background: #fff; color: var(--coral); }
   .clear-dots {
@@ -196,7 +205,7 @@
       padding: calc(6px + var(--safe-t)) 10px calc(10px + var(--safe-b));
       gap: 6px;
     }
-    header, .inkbar, .footer, .alpha, .tip { max-width: 100%; min-width: 0; }
+    header, .inkbar, .footer, .alpha, .tip, .classbar { max-width: 100%; min-width: 0; }
     .brand { min-width: 0; }
     .mark { width: 36px; height: 36px; font-size: 18px; border-radius: 11px; }
     h1 { font-size: 17px; }

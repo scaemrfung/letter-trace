@@ -119,6 +119,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="tracekit.js"></script>
 <script src="trace-page.js"></script>
+<script src="class.js"></script>
 <script>
 /* Spelling page. Shared logic and the tracing check settings (TRACE_RULES) are in trace-page.js. */
 const DEFAULT_WORDS = ["cat", "dog", "sun", "map", "pig", "the"];
@@ -149,7 +150,7 @@ const state = Object.assign(TracePage.state, {
   index: 0,
   mode: "word",
   words: loadWords(),
-  progress: JSON.parse(localStorage.getItem(PROGRESS_KEY) || "{}")
+  progress: {}
 });
 const boards = TracePage.boards;
 
@@ -201,21 +202,29 @@ function render() {
     b.textContent = wd;
     b.classList.toggle("active", i === state.index);
     b.classList.toggle("done", !!state.progress[wd]);
-    b.addEventListener("click", () => { state.index = i; clearAll(); render(); });
+    b.addEventListener("click", () => { state.index = i; clearAll(); render(); say(); });
     row.appendChild(b);
   });
   const act = row.children[state.index];
   if (act && act.scrollIntoView) act.scrollIntoView({ block: "nearest", inline: "nearest" });
+  ClassKit.setFinished(state.words.length > 0 && state.words.every(w => state.progress[w]), {
+    title: "You traced them",
+    body: ClassKit.label() + " finished the spelling list."
+  });
   TracePage.resize();
 }
 
 function clearAll() { TracePage.clearAll(); }
 
+function say() {
+  ClassKit.speak("The word " + word() + ". Trace each letter.");
+}
+
 document.getElementById("next").addEventListener("click", () => {
-  state.index = (state.index + 1) % state.words.length; clearAll(); render();
+  state.index = (state.index + 1) % state.words.length; clearAll(); render(); say();
 });
 document.getElementById("prev").addEventListener("click", () => {
-  state.index = (state.index + state.words.length - 1) % state.words.length; clearAll(); render();
+  state.index = (state.index + state.words.length - 1) % state.words.length; clearAll(); render(); say();
 });
 
 /* ----- Teacher word editor (press and hold so little fingers don't open it) ----- */
@@ -270,16 +279,25 @@ document.getElementById("resetProgress").addEventListener("click", () => {
   TracePage.confirmClear({
     count: Object.keys(state.progress).length,
     title: "Clear the green dots?",
-    body: "Every word will look not traced. The word list stays. This only changes this iPad.",
+    body: "Every word for " + ClassKit.label() + " will look not traced. The word list stays. This only changes this device.",
     empty: "No words have a green dot yet.",
     onClear: () => {
       state.progress = {};
-      localStorage.setItem(PROGRESS_KEY, "{}");
+      ClassKit.saveMine(PROGRESS_KEY, state.progress);
       msg("Green dots cleared.");
       render();
     }
   });
 });
+
+function reloadProgress() {
+  state.progress = ClassKit.mine(PROGRESS_KEY);
+  state.index = 0;
+  clearAll();
+  render();
+}
+
+ClassKit.mount({ onChange: reloadProgress });
 
 TracePage.init({
   texts: () => [word()],
@@ -293,12 +311,15 @@ TracePage.init({
     return bad.length && r.letters.length > 1 ? base + "<small>Try these letters again: " + bad.join(", ") + "</small>" : base;
   },
   onPass: () => {
+    const before = state.words.length > 0 && state.words.every(w => state.progress[w]);
     state.progress[word()] = 1;
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(state.progress));
+    ClassKit.saveMine(PROGRESS_KEY, state.progress);
     render();
+    const now = state.words.every(w => state.progress[w]);
+    if (!before && now) ClassKit.showFinish();
   }
 });
-render();
+reloadProgress();
 if (state.loadedFromLink) TracePage.toast("Loaded " + state.loadedFromLink + " words from the link 📋", "yay");
 </script>
 </body>

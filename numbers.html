@@ -78,6 +78,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="tracekit.js"></script>
 <script src="trace-page.js"></script>
+<script src="class.js"></script>
 <script>
 /* Numbers page. Shared logic and the tracing check settings (TRACE_RULES) are in trace-page.js. */
 const TIPS = {
@@ -99,59 +100,103 @@ const digits = "0123456789".split("");
 const state = Object.assign(TracePage.state, {
   index: 0,
   mode: "upper",
-  progress: JSON.parse(localStorage.getItem("numberTraceProgress") || "{}")
+  progress: {}
 });
 const boards = TracePage.boards;
 
+function list() {
+  const picked = ClassKit.today("numberTraceToday");
+  if (!picked) return digits.slice();
+  const set = [];
+  picked.forEach(s => {
+    const d = String(s);
+    if (digits.indexOf(d) >= 0 && set.indexOf(d) < 0) set.push(d);
+  });
+  return set.length ? set : digits.slice();
+}
+
+function finished() { return list().every(d => state.progress[d]); }
+
+function say() {
+  const d = list()[state.index] || "0";
+  ClassKit.speak("Number " + d + ". " + (TIPS[d] || ""));
+}
+
 function render() {
+  const rows = list();
+  if (state.index >= rows.length) state.index = 0;
   document.body.classList.toggle("solid", state.style === "solid");
-  const d = digits[state.index];
+  const d = rows[state.index];
   document.getElementById("tip").innerHTML = "<strong>" + d + ":</strong> " + TIPS[d];
-  document.querySelectorAll("#alpha button").forEach((b, i) => {
+  const alpha = document.getElementById("alpha");
+  alpha.innerHTML = "";
+  rows.forEach((digit, i) => {
+    const b = document.createElement("button");
+    b.textContent = digit;
     b.classList.toggle("active", i === state.index);
-    b.classList.toggle("done", !!state.progress[digits[i]]);
+    b.classList.toggle("done", !!state.progress[digit]);
+    b.addEventListener("click", () => { state.index = i; clearAll(); render(); say(); });
+    alpha.appendChild(b);
+  });
+  const today = ClassKit.today("numberTraceToday");
+  ClassKit.setFinished(finished(), {
+    title: "You traced them",
+    body: ClassKit.label() + (today ? " finished today's numbers." : " finished every number.")
   });
   TracePage.resize();
 }
 
 function clearAll() { TracePage.clearAll(); }
 
-digits.forEach((d, i) => {
-  const b = document.createElement("button");
-  b.textContent = d;
-  b.addEventListener("click", () => { state.index = i; clearAll(); render(); });
-  document.getElementById("alpha").appendChild(b);
-});
+function reloadProgress() {
+  state.progress = ClassKit.mine("numberTraceProgress");
+  state.index = 0;
+  clearAll();
+  render();
+}
+
 document.getElementById("next").addEventListener("click", () => {
-  state.index = (state.index + 1) % digits.length; clearAll(); render();
+  state.index = (state.index + 1) % list().length; clearAll(); render(); say();
 });
 document.getElementById("prev").addEventListener("click", () => {
-  state.index = (state.index + digits.length - 1) % digits.length; clearAll(); render();
+  state.index = (state.index + list().length - 1) % list().length; clearAll(); render(); say();
+});
+
+ClassKit.mount({
+  onChange: reloadProgress,
+  today: {
+    key: "numberTraceToday",
+    title: "Today's numbers",
+    choices: digits,
+    norm: function (s) { return String(s); }
+  }
 });
 
 TracePage.init({
-  texts: () => [digits[state.index]],
+  texts: () => [list()[state.index] || "0"],
   render,
   onPass: () => {
-    state.progress[digits[state.index]] = 1;
-    localStorage.setItem("numberTraceProgress", JSON.stringify(state.progress));
+    const before = finished();
+    state.progress[list()[state.index]] = 1;
+    ClassKit.saveMine("numberTraceProgress", state.progress);
     render();
+    if (!before && finished()) ClassKit.showFinish();
   }
 });
-render();
-document.getElementById("clearDots").addEventListener("click", () => {
+reloadProgress();
+ClassKit.hold(document.getElementById("clearDots"), () => {
   TracePage.confirmClear({
     count: Object.keys(state.progress).length,
     title: "Clear the number dots?",
-    body: "Every number will look not traced. This only changes this iPad.",
+    body: "Every number for " + ClassKit.label() + " will look not traced. This only changes this device.",
     empty: "No numbers have a green dot yet.",
     onClear: () => {
       state.progress = {};
-      localStorage.setItem("numberTraceProgress", "{}");
+      ClassKit.saveMine("numberTraceProgress", state.progress);
       render();
     }
   });
-});
+}, "Press and hold to clear the green dots");
 </script>
 </body>
 </html>
