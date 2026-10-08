@@ -1,10 +1,7 @@
-/* Names, today's set, sound, and the finished screen. Shared by every page. */
+/* Today's set, sound, and the finished screen. Shared by every page. */
 const ClassKit = (function () {
   "use strict";
-  const NAMES = "letterTraceNames";
-  const WHO = "letterTraceWho";
   const SOUND = "letterTraceSound";
-  const PROGRESS_KEYS = ["letterTraceProgress", "numberTraceProgress", "spellingProgress"];
   let onChange = function () {};
   let finishCopy = { title: "You traced them", body: "" };
 
@@ -13,68 +10,24 @@ const ClassKit = (function () {
     catch (e) { return null; }
   }
 
-  function names() {
-    const n = read(NAMES);
-    return Array.isArray(n) ? n.filter(s => typeof s === "string" && s) : [];
-  }
-
-  function who() {
-    const list = names();
-    if (!list.length) return "";
-    const w = localStorage.getItem(WHO) || "";
-    return list.indexOf(w) >= 0 ? w : list[0];
-  }
-
-  function label() { return who() || "Everyone"; }
-
   function isBag(data) {
     return !!data && typeof data === "object" && !Array.isArray(data) &&
+      Object.keys(data).length > 0 &&
       Object.keys(data).every(k => data[k] && typeof data[k] === "object" && !Array.isArray(data[k]));
   }
 
-  function bag(key) {
-    let data = read(key);
-    if (!data || typeof data !== "object" || Array.isArray(data)) data = {};
-    if (!isBag(data)) data = { "": data };
-    const name = who();
-    if (!data[name] || typeof data[name] !== "object") data[name] = {};
-    return data;
+  function mine(key) {
+    const data = read(key);
+    if (!data || typeof data !== "object" || Array.isArray(data)) return {};
+    if (!isBag(data)) return data;
+    const flat = {};
+    Object.keys(data).forEach(name => Object.assign(flat, data[name]));
+    localStorage.setItem(key, JSON.stringify(flat));
+    return flat;
   }
-
-  function mine(key) { return bag(key)[who()]; }
 
   function saveMine(key, progress) {
-    const data = bag(key);
-    data[who()] = progress;
-    localStorage.setItem(key, JSON.stringify(data));
-  }
-
-  function parseNames(text) {
-    const out = [];
-    String(text || "").split(/[\n,;]+/).forEach(raw => {
-      const clean = raw.replace(/[^A-Za-z0-9 '\-]/g, "").replace(/\s+/g, " ").trim().slice(0, 16);
-      if (clean && !out.some(n => n.toLowerCase() === clean.toLowerCase())) out.push(clean);
-    });
-    return out.slice(0, 40);
-  }
-
-  function saveNames(list) {
-    const prev = names();
-    localStorage.setItem(NAMES, JSON.stringify(list));
-    if (!prev.length && list.length) {
-      PROGRESS_KEYS.forEach(key => {
-        const data = bag(key);
-        if (data[""] && Object.keys(data[""]).length) {
-          data[list[0]] = Object.assign({}, data[""], data[list[0]] || {});
-          delete data[""];
-          localStorage.setItem(key, JSON.stringify(data));
-        }
-      });
-    }
-    if (!list.length) localStorage.removeItem(WHO);
-    else if (list.indexOf(localStorage.getItem(WHO)) < 0) localStorage.setItem(WHO, list[0]);
-    paint();
-    onChange();
+    localStorage.setItem(key, JSON.stringify(progress));
   }
 
   function today(key) {
@@ -156,43 +109,11 @@ const ClassKit = (function () {
   }
 
   function paint() {
-    const row = document.getElementById("kids");
-    if (!row) return;
-    row.innerHTML = "";
-    const list = names();
-    const current = who();
-    (list.length ? list : ["Everyone"]).forEach(name => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = name;
-      const selected = list.length ? name === current : true;
-      b.classList.toggle("active", selected);
-      if (list.length) b.addEventListener("click", () => {
-        localStorage.setItem(WHO, name);
-        paint();
-        onChange();
-      });
-      row.appendChild(b);
-    });
     const sound = document.getElementById("soundBtn");
     if (sound) {
       sound.textContent = soundOn() ? "Sound on" : "Sound off";
       sound.classList.toggle("active", soundOn());
     }
-  }
-
-  function openNames() {
-    const box = document.createElement("textarea");
-    box.value = names().join("\n");
-    box.setAttribute("aria-label", "Children's names");
-    dialog("Children's names", "One name on each line. Press and hold Names so children don't change the list.", {
-      before: box,
-      buttons: [
-        { label: "Cancel", run: function () {} },
-        { label: "Save names", className: "good", run: function () { saveNames(parseNames(box.value)); } }
-      ]
-    });
-    box.focus();
   }
 
   function openToday(spec) {
@@ -229,7 +150,7 @@ const ClassKit = (function () {
     onChange = opts.onChange || function () {};
     const bar = document.createElement("div");
     bar.className = "classbar";
-    bar.innerHTML = '<div class="kids" id="kids"></div><div class="seg" id="classTools"></div>';
+    bar.innerHTML = '<div class="seg" id="classTools"></div>';
     const tools = bar.querySelector("#classTools");
     const sound = document.createElement("button");
     sound.id = "soundBtn";
@@ -238,12 +159,7 @@ const ClassKit = (function () {
       localStorage.setItem(SOUND, soundOn() ? "0" : "1");
       paint();
     });
-    const namesBtn = document.createElement("button");
-    namesBtn.id = "namesBtn";
-    namesBtn.type = "button";
-    namesBtn.textContent = "Names";
-    hold(namesBtn, openNames, "Teachers: press and hold to edit names");
-    tools.append(sound, namesBtn);
+    tools.appendChild(sound);
     if (opts.today) {
       const todayBtn = document.createElement("button");
       todayBtn.type = "button";
@@ -263,5 +179,5 @@ const ClassKit = (function () {
     paint();
   }
 
-  return { who, label, mine, saveMine, today, saveToday, saveNames, speak, hold, mount, setFinished, showFinish };
+  return { mine, saveMine, today, saveToday, speak, hold, mount, setFinished, showFinish };
 })();

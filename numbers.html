@@ -141,7 +141,7 @@ function render() {
   const today = ClassKit.today("numberTraceToday");
   ClassKit.setFinished(finished(), {
     title: "You traced them",
-    body: ClassKit.label() + (today ? " finished today's numbers." : " finished every number.")
+    body: today ? "Today's numbers are finished." : "Every number is finished."
   });
   TracePage.resize();
 }
@@ -188,7 +188,7 @@ ClassKit.hold(document.getElementById("clearDots"), () => {
   TracePage.confirmClear({
     count: Object.keys(state.progress).length,
     title: "Clear the number dots?",
-    body: "Every number for " + ClassKit.label() + " will look not traced. This only changes this device.",
+    body: "Every number will look not traced. This only changes this device.",
     empty: "No numbers have a green dot yet.",
     onClear: () => {
       state.progress = {};

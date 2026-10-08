@@ -209,7 +209,7 @@ function render() {
   if (act && act.scrollIntoView) act.scrollIntoView({ block: "nearest", inline: "nearest" });
   ClassKit.setFinished(state.words.length > 0 && state.words.every(w => state.progress[w]), {
     title: "You traced them",
-    body: ClassKit.label() + " finished the spelling list."
+    body: "The spelling list is finished."
   });
   TracePage.resize();
 }
@@ -279,7 +279,7 @@ document.getElementById("resetProgress").addEventListener("click", () => {
   TracePage.confirmClear({
     count: Object.keys(state.progress).length,
     title: "Clear the green dots?",
-    body: "Every word for " + ClassKit.label() + " will look not traced. The word list stays. This only changes this device.",
+    body: "Every word will look not traced. The word list stays. This only changes this device.",
     empty: "No words have a green dot yet.",
     onClear: () => {
       state.progress = {};
