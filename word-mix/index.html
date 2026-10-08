@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Word Mix">
+<title>Word Mix · Unscramble</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;650&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mix.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="mark" aria-hidden="true">ab</div>
+      <h1>Word Mix<span>Unscramble the word</span></h1>
+    </div>
+    <button type="button" id="soundBtn">Sound off</button>
+  </header>
+
+  <main class="board" id="board">
+    <p class="prompt" id="prompt">Tap the letters to make the word.</p>
+    <div class="slots" id="slots" aria-label="Your word"></div>
+    <div class="bank" id="bank" aria-label="Mixed letters"></div>
+  </main>
+
+  <div class="tools">
+    <button type="button" id="mixBtn">Mix again</button>
+    <button type="button" id="prev">Prev</button>
+    <button type="button" id="next">Next</button>
+  </div>
+
+  <div class="words" id="words" aria-label="Words"></div>
+
+  <footer>
+    <button type="button" id="wordsBtn">Words</button>
+    <button type="button" id="clearDots" class="warn">Clear green dots</button>
+    <a class="quiet" href="https://scaemrfung.github.io/letter-trace/">Letter Trace</a>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="burst" id="burst" aria-hidden="true"></div>
+  <script src="mix.js"></script>
+</body>
+</html>
