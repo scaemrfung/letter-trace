@@ -106,7 +106,19 @@
     w: [L(-36, 50, -18, 100, 0, 50, 18, 100, 36, 50)],
     x: [L(-22, 50, 22, 100), L(22, 50, -22, 100)],
     y: [L(-22, 50, 0, 100), L(22, 50, -18, 140)],
-    z: [L(-22, 50, 22, 50, -22, 100, 22, 100)]
+    z: [L(-22, 50, 22, 50, -22, 100, 22, 100)],
+
+    // Digits: full height, top line to baseline.
+    0: [A(0, 50, 30, 50, -90, -450)],                                   // top, counter-clockwise all the way round
+    1: [L(0, 0, 0, 100)],                                               // one line down (no flag or base)
+    2: [P(A(0, 28, 28, 28, 200, 385), L(25.4, 39.8, -28, 100, 30, 100))], // curve over, slant down, across
+    3: [P(A(0, 25, 25, 25, 200, 450), A(0, 75, 28, 25, 270, 520))],     // two curves, one stroke
+    4: [L(-28, 0, -28, 60, 32, 60), L(18, 0, 18, 100)],                 // down and across, then a separate long down line
+    5: [P(L(-22, 0, -20.7, 54), A(0, 72, 27, 28, -140, 140)), L(-22, 0, 26, 0)], // down, round belly, flag on top last
+    6: [P(A(4, 60, 32, 60, -60, -180), L(-28, 60, -28, 72), A(0, 72, 28, 28, 180, -180))], // curve down, loop at the bottom
+    7: [L(-26, 0, 28, 0, -6, 100)],                                     // across, then slant down
+    8: [P(A(0, 25, 24, 25, -30, -270), A(0, 75, 28, 25, -90, 270), A(0, 25, 24, 25, 90, -30))], // S, then back up to the start
+    9: [A(-2, 28, 26, 28, -40, -400), L(24, 0, 24, 100)]                // circle, then a line down
   };
 
   /* ---------- geometry ---------- */

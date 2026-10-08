@@ -22,7 +22,14 @@ The address above starts working a minute or two later. In Safari on the iPad, t
 ## Stroke order and tracing check
 
 - Each letter shows numbered start dots (1, 2, 3...) and arrows for the order and direction of each line, in manuscript (ball-and-stick) style.
-- **Show me** animates the strokes in order. **1 2 3 Numbers** hides or shows the numbers and arrows (the setting is remembered).
+- **Show me** animates the strokes in order. **1 2 3 Steps** hides or shows the numbers and arrows (the setting is remembered).
 - **I traced it** only saves the green dot when at least 85% of the ink is on the letter and at least 80% of the letter (75% of every stroke) is traced. Otherwise the child sees "Try again, stay on the line!", with off-line ink marked in red and missed parts in orange. Order and direction only give a friendly tip.
-- The thresholds are in `TRACE_RULES` at the top of the script in `index.html`.
-- `tracekit.js` has the stroke data, drawing, animation and accuracy check, so a numbers page or a spelling-words page can reuse it (`TraceKit.compose("cat")` lays out a whole word).
+- The thresholds are in `TRACE_RULES` at the top of `trace-page.js` (shared by every page).
+- `tracekit.js` has the stroke data (letters and digits), drawing, animation and accuracy check. `trace-page.js` and `trace.css` hold the shared page logic and look.
+
+## Pages
+
+- Letters: https://scaemrfung.github.io/letter-trace/
+- Numbers 0-9: https://scaemrfung.github.io/letter-trace/numbers.html
+
+Switch pages with the Letters / Numbers tabs at the bottom right.

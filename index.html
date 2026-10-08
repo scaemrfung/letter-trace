@@ -8,176 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Letter Trace">
 <title>Letter Trace · Upper & Lower Case</title>
-<style>
-  :root {
-    --ink: #243044;
-    --muted: #5d6b7c;
-    --paper: #fffdf8;
-    --sky: #e7f0f8;
-    --line: #7eafd6;
-    --mid: #e28b93;
-    --blue: #2f6fed;
-    --green: #1f9d62;
-    --coral: #e36b4f;
-    --shadow: 0 10px 30px rgba(36, 48, 68, 0.08);
-    --safe-t: env(safe-area-inset-top, 0px);
-    --safe-b: env(safe-area-inset-bottom, 0px);
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body {
-    margin: 0;
-    height: 100%;
-    background:
-      radial-gradient(1200px 500px at 10% -10%, #fff 0%, transparent 50%),
-      linear-gradient(180deg, #f3f7fb 0%, #e7eef5 100%);
-    color: var(--ink);
-    font-family: "Avenir Next", "Nunito", "Trebuchet MS", system-ui, sans-serif;
-    overscroll-behavior: none;
-  }
-  body {
-    min-height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    padding: calc(10px + var(--safe-t)) 14px calc(12px + var(--safe-b));
-    gap: 10px;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .brand { display: flex; align-items: center; gap: 10px; min-width: 180px; }
-  .mark {
-    width: 42px; height: 42px; border-radius: 13px;
-    background: linear-gradient(145deg, #4d86f5, #2f6fed);
-    color: white; display: grid; place-items: center;
-    font-family: "Chalkboard SE", "Comic Sans MS", "Marker Felt", cursive;
-    font-size: 24px; box-shadow: 0 6px 14px rgba(47, 111, 237, 0.28);
-  }
-  h1 { font-size: 20px; margin: 0; letter-spacing: -0.03em; }
-  h1 span { display: block; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
-  .seg, .tools, .alpha, .inkbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  button, .seg button {
-    border: 0; background: white; color: var(--ink);
-    border-radius: 12px; padding: 10px 14px; font: inherit; font-weight: 700;
-    box-shadow: 0 1px 0 rgba(36,48,68,0.04), 0 0 0 1px rgba(36,48,68,0.06);
-    cursor: pointer;
-  }
-  button:active { transform: translateY(1px); }
-  button.active, .seg button.active {
-    background: var(--ink); color: white; box-shadow: none;
-  }
-  button.good { background: var(--green); color: white; }
-  button.warn { background: #fff; color: var(--coral); }
-  .stage {
-    flex: 1;
-    min-height: 280px;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  body.both .stage { grid-template-columns: 1fr 1fr; }
-  .board {
-    position: relative;
-    background: var(--paper);
-    border-radius: 22px;
-    box-shadow: var(--shadow);
-    overflow: hidden;
-    min-height: 320px;
-    touch-action: none;
-    container-type: size;
-  }
-  .rules, canvas { position: absolute; inset: 0; }
-  .rules { pointer-events: none; }
-  .rule {
-    position: absolute; left: 8%; right: 6%; height: 0;
-    border-top: 2px solid var(--line);
-  }
-  .rule.top { top: 18%; }
-  .rule.mid { top: 42%; border-top: 2px dashed var(--mid); }
-  .rule.base { top: 66%; border-top: 3px solid #5f97c4; }
-  .rule.desc { top: 86%; border-top: 2px solid #b7d3ea; }
-  .rule-label {
-    position: absolute; left: 8px; font-size: 10px; font-weight: 800;
-    letter-spacing: 0.05em; text-transform: uppercase; color: #8aa0b5;
-    transform: translateY(-13px);
-  }
-  .guide { display: none; }
-  .guide-canvas {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    pointer-events: none;
-  }
-  canvas { width: 100%; height: 100%; touch-action: none; }
-  .case-tag {
-    position: absolute; top: 10px; left: 12px; z-index: 2;
-    font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
-    text-transform: uppercase; color: #7d90a4;
-    background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 999px;
-  }
-  .tip {
-    background: white; border-radius: 14px; padding: 10px 14px;
-    color: var(--muted); font-size: 15px; box-shadow: 0 0 0 1px rgba(36,48,68,0.05);
-  }
-  .tip strong { color: var(--ink); }
-  .inkbar { justify-content: space-between; }
-  .swatches { display: flex; gap: 8px; }
-  .swatch {
-    width: 34px; height: 34px; border-radius: 50%; padding: 0;
-    box-shadow: inset 0 0 0 2px white, 0 0 0 1px rgba(36,48,68,0.12);
-  }
-  .swatch.active { outline: 3px solid var(--ink); outline-offset: 2px; }
-  input[type="range"] { width: 120px; accent-color: var(--blue); }
-  .alpha {
-    overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch;
-  }
-  .alpha button {
-    min-width: 44px; height: 44px; padding: 0; position: relative; flex: 0 0 auto;
-    font-family: "Chalkboard SE", "Comic Sans MS", cursive; font-size: 20px;
-  }
-  .alpha button.done::after {
-    content: ""; position: absolute; right: 5px; top: 5px;
-    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
-  }
-  .help { font-size: 13px; color: var(--muted); }
-  details.helpbox {
-    background: white; border-radius: 14px; padding: 8px 12px;
-    box-shadow: 0 0 0 1px rgba(36,48,68,0.05);
-  }
-  details.helpbox summary { cursor: pointer; font-weight: 800; }
-  .burst {
-    position: fixed; inset: 0; pointer-events: none; z-index: 5;
-  }
-  .star {
-    position: absolute; font-size: 28px; animation: pop 900ms ease-out forwards;
-  }
-  @keyframes pop {
-    0% { transform: translateY(0) scale(0.4); opacity: 0; }
-    30% { opacity: 1; }
-    100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
-  }
-  button.show { background: var(--blue); color: white; }
-  button.show.playing { background: #1f4fb8; }
-  .toast {
-    position: fixed; left: 50%; top: 72%; z-index: 6; pointer-events: none;
-    transform: translate(-50%, -50%) scale(0.92); opacity: 0;
-    transition: opacity 200ms ease, transform 200ms ease;
-    background: white; border-radius: 22px; padding: 16px 26px; max-width: min(90vw, 560px);
-    text-align: center; font-size: 26px; font-weight: 800; line-height: 1.25;
-    box-shadow: 0 18px 40px rgba(36, 48, 68, 0.18);
-  }
-  .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  .toast.oops { color: var(--coral); }
-  .toast.yay { color: var(--green); }
-  .toast small { display: block; font-size: 17px; font-weight: 700; color: var(--muted); margin-top: 4px; }
-  @media (max-width: 800px) {
-    body.both .stage { grid-template-columns: 1fr; }
-  }
-</style>
+<link rel="stylesheet" href="trace.css">
 </head>
 <body>
   <header>
@@ -196,7 +27,7 @@
     </div>
     <div class="seg">
       <button id="showBtn" class="show">▶ Show me</button>
-      <button id="numBtn" class="active" aria-pressed="true">1 2 3 Numbers</button>
+      <button id="numBtn" class="active" aria-pressed="true">1 2 3 Steps</button>
     </div>
   </header>
 
@@ -249,34 +80,22 @@
   </div>
 
   <div class="alpha" id="alpha"></div>
+  <div class="footer">
   <details class="helpbox">
     <summary>How to use this on an iPad</summary>
-    <p class="help">Open this page in Safari. Tap Share, then Add to Home Screen, so it opens like an app. Turn the iPad sideways for a bigger board. Trace on the dotted letter with a finger or Apple Pencil. Pink dashed line is the middle. Dark blue line is the baseline. Letters with tails (g, j, p, q, y) go under the baseline. Coloured numbers show which line to make first, and arrows show which way to go. Tap Show me to watch the letter being made, and tap Numbers to hide or show the numbers. Tap I traced it when you are done: the green dot is only saved when the tracing stays on the line and covers the whole letter. Progress stays on this iPad.</p>
+    <p class="help">Open this page in Safari. Tap Share, then Add to Home Screen, so it opens like an app. Turn the iPad sideways for a bigger board. Trace on the dotted letter with a finger or Apple Pencil. Pink dashed line is the middle. Dark blue line is the baseline. Letters with tails (g, j, p, q, y) go under the baseline. Coloured numbers show which line to make first, and arrows show which way to go. Tap Show me to watch the letter being made, and tap 1 2 3 Steps to hide or show the numbers. Tap I traced it when you are done: the green dot is only saved when the tracing stays on the line and covers the whole letter. Progress stays on this iPad.</p>
   </details>
+  <nav class="pages" aria-label="Pages">
+    <a href="index.html" class="active" aria-current="page">Letters</a>
+    <a href="numbers.html">Numbers</a>
+  </nav>
+  </div>
   <div class="burst" id="burst"></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="tracekit.js"></script>
+<script src="trace-page.js"></script>
 <script>
-/* ===== Tracing check settings (easy to change) =====
-   Distances are a share of the letter height (top line to baseline), so they
-   grow and shrink with the screen. Defaults live in tracekit.js. */
-const TRACE_RULES = {
-  inkOnLineMin: 0.85,      // at least 85% of what the child draws must be on the letter
-  inkTolerance: 0.11,      // "on the letter" = within 11% of letter height of a stroke's centre, plus half the pen width
-  coverageMin: 0.80,       // at least 80% of the letter must be traced
-  strokeCoverageMin: 0.75, // and every stroke (each line, curve or dot) at least 75%
-  coverRadius: 0.08,       // a part of the letter counts as traced when ink comes this close
-  orderCheck: "hint"       // "off", "hint" (friendly tip, still earns the dot) or "strict" (wrong order = try again)
-};
-const MESSAGES = {
-  empty: "Trace the letter first! ✏️",
-  off: "Try again, stay on the line! 🙂",
-  partial: "Almost! Trace the whole letter. 🙂",
-  order: "Try again! Start at 1 and follow the arrows. 🙂",
-  pass: "Great tracing! ⭐",
-  passHint: "Great tracing! ⭐<small>Next time, start at 1 and follow the arrows.</small>"
-};
-
+/* Letters page. Shared logic and the tracing check settings (TRACE_RULES) are in trace-page.js. */
 const TIPS = {
   A: "Start at the top. Slide down left, slide down right, then a line across the middle.",
   B: "Start at the top. Straight line down, then a curve on top and a curve on the bottom.",
@@ -333,114 +152,12 @@ const TIPS = {
 };
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-const state = {
+const state = Object.assign(TracePage.state, {
   index: 0,
   mode: "upper",
-  color: "#2f6fed",
-  size: 16,
-  style: "dotted",
-  numbers: localStorage.getItem("letterTraceNumbers") !== "0",
   progress: JSON.parse(localStorage.getItem("letterTraceProgress") || "{}")
-};
-const boards = [makeBoard(0), makeBoard(1)];
-
-function makeBoard(i) {
-  const canvas = document.getElementById("c" + i);
-  const guide = document.getElementById("g" + i);
-  return {
-    canvas,
-    guide,
-    ctx: canvas.getContext("2d"),
-    gctx: guide.getContext("2d"),
-    strokes: [],
-    current: null,
-    pointer: null,
-    fig: null,
-    T: null,
-    placed: [],
-    feedback: null
-  };
-}
-
-let dotPattern = null;
-function dots(ctx) {
-  if (dotPattern) return dotPattern;
-  const c = document.createElement("canvas");
-  c.width = 14; c.height = 14;
-  const g = c.getContext("2d");
-  g.fillStyle = "#7f9dba";
-  g.beginPath();
-  g.arc(2, 2, 1.8, 0, Math.PI * 2);
-  g.fill();
-  dotPattern = ctx.createPattern(c, "repeat");
-  return dotPattern;
-}
-
-function drawGuide(board, letter) {
-  const canvas = board.guide;
-  const rect = canvas.parentElement.getBoundingClientRect();
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
-  board.gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  // The guide letter is drawn from stroke data, so numbers, arrows and the
-  // tracing check line up exactly on every device.
-  board.fig = TraceKit.compose(letter);
-  board.T = TraceKit.layout(board.fig, rect.width, rect.height, Object.assign({ maxWidth: 0.84 }, linePx(canvas.parentElement)));
-  board.placed = TraceKit.place(board.fig, board.T);
-  paintGuide(board);
-}
-
-// Centre of the top line and baseline inside a board, so guides sit exactly on the drawn lines.
-function linePx(boardEl) {
-  const br = boardEl.getBoundingClientRect();
-  const y = cls => {
-    const r = boardEl.querySelector(".rule." + cls);
-    return r.getBoundingClientRect().top - br.top + parseFloat(getComputedStyle(r).borderTopWidth) / 2;
-  };
-  return { topPx: y("top"), basePx: y("base") };
-}
-
-function paintGuide(board, opts) {
-  const ctx = board.gctx, T = board.T;
-  if (!T) return;
-  ctx.clearRect(0, 0, T.w, T.h);
-  if (document.body.classList.contains("noguide")) return;
-  TraceKit.drawGuide(ctx, board.placed, T, { style: state.style, pattern: dots(ctx) });
-  if (state.numbers && !(opts && opts.noNumbers)) TraceKit.drawOrder(ctx, board.placed, T);
-}
-
-let stopShows = [];
-function stopShow() {
-  stopShows.forEach(f => f());
-  stopShows = [];
-  document.getElementById("showBtn").classList.remove("playing");
-  boards.forEach(b => paintGuide(b));
-}
-function showMe() {
-  stopShow();
-  const active = boards.filter(b => !b.canvas.closest(".board").hidden);
-  let left = active.length;
-  document.getElementById("showBtn").classList.add("playing");
-  active.forEach(b => {
-    stopShows.push(TraceKit.animate(b.gctx, b.placed, b.T, {
-      drawBase: () => paintGuide(b, { noNumbers: true }),
-      onDone: () => {
-        paintGuide(b);
-        if (--left === 0) { stopShows = []; document.getElementById("showBtn").classList.remove("playing"); }
-      }
-    }));
-  });
-}
-
-let toastTimer = 0;
-function toast(html, kind) {
-  const t = document.getElementById("toast");
-  t.innerHTML = html;
-  t.className = "toast show " + (kind || "");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.className = "toast " + (kind || ""); }, 2600);
-}
+});
+const boards = TracePage.boards;
 
 function glyph(upper) {
   const L = letters[state.index];
@@ -457,7 +174,6 @@ function render() {
   document.getElementById("guide0").textContent = g0;
   document.getElementById("guide1").textContent = g1;
   document.getElementById("tag0").textContent = state.mode === "lower" ? "Lower case" : "Upper case";
-  const key = state.mode === "lower" ? g0 : g0;
   const lowerTip = TIPS[g1] ? " Lower: " + TIPS[g1] : "";
   document.getElementById("tip").innerHTML = "<strong>" + g0 + (both ? " / " + g1 : "") + ":</strong> " + (TIPS[g0] || "") + (both ? lowerTip : "");
   document.querySelectorAll("#mode button").forEach(b => b.classList.toggle("active", b.dataset.mode === state.mode));
@@ -468,85 +184,10 @@ function render() {
     b.classList.toggle("done", !!mark);
     b.textContent = state.mode === "lower" ? L.toLowerCase() : L;
   });
-  resize();
+  TracePage.resize();
 }
 
-function resize() {
-  stopShows.forEach(f => f());
-  stopShows = [];
-  document.getElementById("showBtn").classList.remove("playing");
-  const g0 = state.mode === "lower" ? glyph(false) : glyph(true);
-  const g1 = glyph(false);
-  boards.forEach((b, i) => {
-    if (b.canvas.closest(".board").hidden) return;
-    const rect = b.canvas.parentElement.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    b.canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-    b.canvas.height = Math.max(1, Math.floor(rect.height * dpr));
-    b.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    b.feedback = null;
-    drawGuide(b, i === 0 ? g0 : g1);
-    redraw(b);
-  });
-}
-
-function redraw(b) {
-  const rect = b.canvas.getBoundingClientRect();
-  b.ctx.clearRect(0, 0, rect.width, rect.height);
-  b.strokes.forEach(s => paint(b.ctx, s));
-  if (b.current) paint(b.ctx, b.current);
-  if (b.feedback && b.T) TraceKit.drawFeedback(b.ctx, b.feedback, b.T);
-}
-
-function paint(ctx, stroke) {
-  if (!stroke.points.length) return;
-  ctx.strokeStyle = stroke.color;
-  ctx.lineWidth = stroke.size;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.beginPath();
-  ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-  for (let i = 1; i < stroke.points.length - 1; i++) {
-    const midX = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
-    const midY = (stroke.points[i].y + stroke.points[i + 1].y) / 2;
-    ctx.quadraticCurveTo(stroke.points[i].x, stroke.points[i].y, midX, midY);
-  }
-  const last = stroke.points[stroke.points.length - 1];
-  ctx.lineTo(last.x, last.y);
-  ctx.stroke();
-}
-
-function pos(board, e) {
-  const r = board.canvas.getBoundingClientRect();
-  return { x: e.clientX - r.left, y: e.clientY - r.top };
-}
-
-boards.forEach(board => {
-  const c = board.canvas;
-  c.addEventListener("pointerdown", e => {
-    if (board.pointer !== null) return;
-    c.setPointerCapture(e.pointerId);
-    board.pointer = e.pointerId;
-    board.feedback = null;
-    board.current = { color: state.color, size: state.size, points: [pos(board, e)] };
-    redraw(board);
-  });
-  c.addEventListener("pointermove", e => {
-    if (e.pointerId !== board.pointer || !board.current) return;
-    const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
-    events.forEach(ev => board.current.points.push(pos(board, ev)));
-    redraw(board);
-  });
-  const end = e => {
-    if (e.pointerId !== board.pointer) return;
-    if (board.current && board.current.points.length) board.strokes.push(board.current);
-    board.current = null;
-    board.pointer = null;
-    redraw(board);
-  };
-  c.addEventListener("pointerup", end);
-  c.addEventListener("pointercancel", end);
-});
+function clearAll() { TracePage.clearAll(); }
 
 function buildAlpha() {
   const row = document.getElementById("alpha");
@@ -558,12 +199,6 @@ function buildAlpha() {
   });
 }
 
-function clearAll() {
-  boards.forEach(b => { b.strokes = []; b.current = null; b.feedback = null; });
-  const t = document.getElementById("toast");
-  if (t) t.classList.remove("show");
-}
-
 document.getElementById("mode").addEventListener("click", e => {
   const btn = e.target.closest("button");
   if (!btn) return;
@@ -571,88 +206,24 @@ document.getElementById("mode").addEventListener("click", e => {
   clearAll();
   render();
 });
-document.getElementById("guideBtn").addEventListener("click", () => {
-  document.body.classList.toggle("noguide");
-  document.getElementById("guideBtn").classList.toggle("active");
-  resize();
-});
-document.getElementById("styleBtn").addEventListener("click", () => {
-  state.style = state.style === "dotted" ? "solid" : "dotted";
-  document.getElementById("styleBtn").textContent = state.style === "dotted" ? "Solid guide" : "Dotted guide";
-  render();
-});
-document.getElementById("swatches").addEventListener("click", e => {
-  const btn = e.target.closest(".swatch");
-  if (!btn) return;
-  state.color = btn.dataset.color;
-  document.querySelectorAll(".swatch").forEach(s => s.classList.toggle("active", s === btn));
-});
-document.getElementById("size").addEventListener("input", e => state.size = Number(e.target.value));
-document.getElementById("clear").addEventListener("click", () => { clearAll(); resize(); });
-document.getElementById("undo").addEventListener("click", () => {
-  boards.forEach(b => { if (b.strokes.length) b.strokes.pop(); b.feedback = null; redraw(b); });
-});
 document.getElementById("next").addEventListener("click", () => {
   state.index = (state.index + 1) % 26; clearAll(); render();
 });
 document.getElementById("prev").addEventListener("click", () => {
   state.index = (state.index + 25) % 26; clearAll(); render();
 });
-document.getElementById("showBtn").addEventListener("click", () => {
-  if (stopShows.length) stopShow(); else showMe();
-});
-document.getElementById("numBtn").addEventListener("click", () => {
-  state.numbers = !state.numbers;
-  localStorage.setItem("letterTraceNumbers", state.numbers ? "1" : "0");
-  const btn = document.getElementById("numBtn");
-  btn.classList.toggle("active", state.numbers);
-  btn.setAttribute("aria-pressed", String(state.numbers));
-  if (!stopShows.length) boards.forEach(b => paintGuide(b));
-});
-document.getElementById("numBtn").classList.toggle("active", state.numbers);
 
-// Only award the green dot when every visible board was traced on the line.
-function checkTracing() {
-  const active = boards.filter(b => !b.canvas.closest(".board").hidden);
-  const results = active.map(b => {
-    const r = TraceKit.check(b.placed, b.T, b.strokes, TRACE_RULES);
-    b.feedback = r.pass ? null : r;
-    redraw(b);
-    return r;
-  });
-  const order = ["off", "partial", "order", "empty"];
-  const failed = results.filter(r => !r.pass).sort((a, b) => order.indexOf(a.reason) - order.indexOf(b.reason));
-  return { pass: !failed.length, reason: failed.length ? failed[0].reason : null, hint: results.some(r => r.hint), results };
-}
-
-document.getElementById("done").addEventListener("click", () => {
-  const result = checkTracing();
-  window.lastTraceCheck = result;
-  if (!result.pass) { toast(MESSAGES[result.reason] || MESSAGES.off, "oops"); return; }
-  toast(result.hint ? MESSAGES.passHint : MESSAGES.pass, "yay");
-  const L = letters[state.index];
-  if (state.mode !== "lower") state.progress[L] = 1;
-  if (state.mode !== "upper") state.progress[L.toLowerCase()] = 1;
-  localStorage.setItem("letterTraceProgress", JSON.stringify(state.progress));
-  burst();
-  render();
-});
-
-function burst() {
-  const box = document.getElementById("burst");
-  box.innerHTML = "";
-  for (let i = 0; i < 14; i++) {
-    const s = document.createElement("div");
-    s.className = "star";
-    s.textContent = i % 2 ? "★" : "✦";
-    s.style.left = (20 + Math.random() * 60) + "%";
-    s.style.top = (40 + Math.random() * 30) + "%";
-    s.style.color = ["#2f6fed", "#e36b4f", "#1f9d62", "#f0a202"][i % 4];
-    box.appendChild(s);
+TracePage.init({
+  texts: () => [state.mode === "lower" ? glyph(false) : glyph(true), glyph(false)],
+  render,
+  onPass: () => {
+    const L = letters[state.index];
+    if (state.mode !== "lower") state.progress[L] = 1;
+    if (state.mode !== "upper") state.progress[L.toLowerCase()] = 1;
+    localStorage.setItem("letterTraceProgress", JSON.stringify(state.progress));
+    render();
   }
-}
-
-window.addEventListener("resize", resize);
+});
 buildAlpha();
 render();
 </script>

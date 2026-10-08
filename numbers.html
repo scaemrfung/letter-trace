@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Number Trace">
+<title>Number Trace · 0 to 9</title>
+<link rel="stylesheet" href="trace.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="mark">12</div>
+      <h1>Number Trace<span>Finger or Apple Pencil · iPad</span></h1>
+    </div>
+    <div class="seg">
+      <button id="guideBtn" class="active">Dotted guide</button>
+      <button id="styleBtn">Solid guide</button>
+    </div>
+    <div class="seg">
+      <button id="showBtn" class="show">▶ Show me</button>
+      <button id="numBtn" class="active" aria-pressed="true">1 2 3 Steps</button>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <div class="board" data-board="0">
+      <div class="case-tag" id="tag0">Numbers</div>
+      <div class="rules" aria-hidden="true">
+        <div class="rule top"><span class="rule-label">top</span></div>
+        <div class="rule mid"><span class="rule-label">middle</span></div>
+        <div class="rule base"><span class="rule-label">base</span></div>
+        <div class="rule desc"><span class="rule-label">tail</span></div>
+      </div>
+      <canvas class="guide-canvas" id="g0"></canvas>
+      <canvas id="c0"></canvas>
+    </div>
+  </div>
+
+  <div class="tip" id="tip"></div>
+
+  <div class="inkbar">
+    <div class="swatches" id="swatches">
+      <button class="swatch active" data-color="#2f6fed" style="background:#2f6fed" aria-label="Blue"></button>
+      <button class="swatch" data-color="#e36b4f" style="background:#e36b4f" aria-label="Coral"></button>
+      <button class="swatch" data-color="#1f9d62" style="background:#1f9d62" aria-label="Green"></button>
+      <button class="swatch" data-color="#7a4de0" style="background:#7a4de0" aria-label="Purple"></button>
+      <button class="swatch" data-color="#f0a202" style="background:#f0a202" aria-label="Gold"></button>
+      <button class="swatch" data-color="#243044" style="background:#243044" aria-label="Black"></button>
+    </div>
+    <label class="help">Pen <input id="size" type="range" min="6" max="28" value="16"></label>
+    <div class="tools">
+      <button id="undo">Undo</button>
+      <button id="clear" class="warn">Clear</button>
+      <button id="prev">Prev</button>
+      <button id="next">Next</button>
+      <button id="done" class="good">I traced it</button>
+    </div>
+  </div>
+
+  <div class="alpha" id="alpha"></div>
+  <div class="footer">
+  <details class="helpbox">
+    <summary>How to use this on an iPad</summary>
+    <p class="help">Open this page in Safari. Tap Share, then Add to Home Screen, so it opens like an app. Trace the dotted number with a finger or Apple Pencil. Numbers start on the top line and sit on the dark blue baseline. Coloured numbers show which line to make first, and arrows show which way to go. Tap Show me to watch the number being made, and tap 1 2 3 Steps to hide or show the steps. Tap I traced it when you are done: the green dot is only saved when the tracing stays on the line and covers the whole number. Progress stays on this iPad.</p>
+  </details>
+  <nav class="pages" aria-label="Pages">
+    <a href="index.html">Letters</a>
+    <a href="numbers.html" class="active" aria-current="page">Numbers</a>
+  </nav>
+  </div>
+  <div class="burst" id="burst"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="tracekit.js"></script>
+<script src="trace-page.js"></script>
+<script>
+/* Numbers page. Shared logic and the tracing check settings (TRACE_RULES) are in trace-page.js. */
+const TIPS = {
+  0: "Start at the top. Curve down and all the way around to where you started.",
+  1: "Start at the top. One straight line down.",
+  2: "Start near the top. Curve up and around, slant down to the left, then a line across the bottom.",
+  3: "Start near the top. Curve around to the middle, then curve around again to the bottom.",
+  4: "Line down, then across. Lift your pencil. Then a long line down on the right.",
+  5: "Line down, then a big round belly. Lift your pencil and put the flag on top.",
+  6: "Start at the top right. Curve down and around, then make a loop at the bottom.",
+  7: "Line across the top, then slant down.",
+  8: "Start at the top right. Make an S, then go back up to where you started.",
+  9: "Make a circle at the top, then a straight line down."
+};
+MESSAGES.empty = "Trace the number first! ✏️";
+MESSAGES.partial = "Almost! Trace the whole number. 🙂";
+
+const digits = "0123456789".split("");
+const state = Object.assign(TracePage.state, {
+  index: 0,
+  mode: "upper",
+  progress: JSON.parse(localStorage.getItem("numberTraceProgress") || "{}")
+});
+const boards = TracePage.boards;
+
+function render() {
+  document.body.classList.toggle("solid", state.style === "solid");
+  const d = digits[state.index];
+  document.getElementById("tip").innerHTML = "<strong>" + d + ":</strong> " + TIPS[d];
+  document.querySelectorAll("#alpha button").forEach((b, i) => {
+    b.classList.toggle("active", i === state.index);
+    b.classList.toggle("done", !!state.progress[digits[i]]);
+  });
+  TracePage.resize();
+}
+
+function clearAll() { TracePage.clearAll(); }
+
+digits.forEach((d, i) => {
+  const b = document.createElement("button");
+  b.textContent = d;
+  b.addEventListener("click", () => { state.index = i; clearAll(); render(); });
+  document.getElementById("alpha").appendChild(b);
+});
+document.getElementById("next").addEventListener("click", () => {
+  state.index = (state.index + 1) % digits.length; clearAll(); render();
+});
+document.getElementById("prev").addEventListener("click", () => {
+  state.index = (state.index + digits.length - 1) % digits.length; clearAll(); render();
+});
+
+TracePage.init({
+  texts: () => [digits[state.index]],
+  render,
+  onPass: () => {
+    state.progress[digits[state.index]] = 1;
+    localStorage.setItem("numberTraceProgress", JSON.stringify(state.progress));
+    render();
+  }
+});
+render();
+</script>
+</body>
+</html>
