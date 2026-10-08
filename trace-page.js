@@ -278,5 +278,47 @@ const TracePage = (function () {
     window.addEventListener("resize", resize);
   }
 
-  return { state, boards, init, resize, redraw, paintGuide, showMe, stopShow, toast, burst, check, clearAll, linePx };
+  function confirmClear(opts) {
+    const n = opts.count;
+    const overlay = document.createElement("div");
+    overlay.className = "clear-dots";
+    const card = document.createElement("div");
+    card.className = "clear-dots-card";
+    card.setAttribute("role", "dialog");
+    card.setAttribute("aria-modal", "true");
+    const heading = document.createElement("h2");
+    heading.id = "clear-dots-title";
+    heading.textContent = n === 0 ? "Nothing to clear" : opts.title;
+    card.setAttribute("aria-labelledby", "clear-dots-title");
+    const note = document.createElement("p");
+    note.textContent = n === 0 ? opts.empty : opts.body;
+    const row = document.createElement("div");
+    row.className = "row";
+    const keep = document.createElement("button");
+    keep.type = "button";
+    keep.textContent = n === 0 ? "Close" : "Keep dots";
+    row.appendChild(keep);
+    if (n > 0) {
+      const wipe = document.createElement("button");
+      wipe.type = "button";
+      wipe.className = "warn";
+      wipe.textContent = "Clear dots";
+      wipe.addEventListener("click", () => { opts.onClear(); close(); });
+      row.appendChild(wipe);
+    }
+    card.append(heading, note, row);
+    overlay.appendChild(card);
+    function close() {
+      overlay.remove();
+      document.removeEventListener("keydown", onKey);
+    }
+    function onKey(e) { if (e.key === "Escape") close(); }
+    keep.addEventListener("click", close);
+    overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(overlay);
+    keep.focus();
+  }
+
+  return { state, boards, init, resize, redraw, paintGuide, showMe, stopShow, toast, burst, check, clearAll, confirmClear, linePx };
 })();

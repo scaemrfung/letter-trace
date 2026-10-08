@@ -81,6 +81,7 @@
 
   <div class="alpha" id="alpha"></div>
   <div class="footer">
+  <button type="button" id="clearDots" class="dots">Clear green dots</button>
   <details class="helpbox">
     <summary>How to use this on an iPad</summary>
     <p class="help">Open this page in Safari. Tap Share, then Add to Home Screen, so it opens like an app. Turn the iPad sideways for a bigger board. Trace on the dotted letter with a finger or Apple Pencil. Pink dashed line is the middle. Dark blue line is the baseline. Letters with tails (g, j, p, q, y) go under the baseline. Coloured numbers show which line to make first, and arrows show which way to go. Tap Show me to watch the letter being made, and tap 1 2 3 Steps to hide or show the numbers. Tap I traced it when you are done: the green dot is only saved when the tracing stays on the line and covers the whole letter. Progress stays on this iPad.</p>
@@ -227,6 +228,19 @@ TracePage.init({
 });
 buildAlpha();
 render();
+document.getElementById("clearDots").addEventListener("click", () => {
+  TracePage.confirmClear({
+    count: Object.keys(state.progress).length,
+    title: "Clear the green dots?",
+    body: "Every letter, upper and lower case, will look not traced. This only changes this iPad.",
+    empty: "No letters have a green dot yet.",
+    onClear: () => {
+      state.progress = {};
+      localStorage.setItem("letterTraceProgress", "{}");
+      render();
+    }
+  });
+});
 </script>
 </body>
 </html>

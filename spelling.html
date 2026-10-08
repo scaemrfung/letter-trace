@@ -266,10 +266,18 @@ document.getElementById("shareBtn").addEventListener("click", async () => {
   catch (e) { box.select(); msg("Copy this link and open it on the other iPads."); }
 });
 document.getElementById("resetProgress").addEventListener("click", () => {
-  state.progress = {};
-  localStorage.setItem(PROGRESS_KEY, "{}");
-  msg("Green dots cleared.");
-  render();
+  TracePage.confirmClear({
+    count: Object.keys(state.progress).length,
+    title: "Clear the green dots?",
+    body: "Every word will look not traced. The word list stays. This only changes this iPad.",
+    empty: "No words have a green dot yet.",
+    onClear: () => {
+      state.progress = {};
+      localStorage.setItem(PROGRESS_KEY, "{}");
+      msg("Green dots cleared.");
+      render();
+    }
+  });
 });
 
 TracePage.init({
