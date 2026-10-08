@@ -217,15 +217,47 @@ const TracePage = (function () {
   function burst() {
     const box = $("burst");
     box.innerHTML = "";
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 28; i++) {
       const s = document.createElement("div");
       s.className = "star";
-      s.textContent = i % 2 ? "★" : "✦";
-      s.style.left = (20 + Math.random() * 60) + "%";
-      s.style.top = (40 + Math.random() * 30) + "%";
-      s.style.color = ["#2f6fed", "#e36b4f", "#1f9d62", "#f0a202"][i % 4];
+      s.textContent = i % 3 === 0 ? "★" : i % 3 === 1 ? "✦" : "●";
+      const angle = (Math.PI * 2 * i) / 28;
+      const dist = 90 + Math.random() * 140;
+      s.style.left = "50%";
+      s.style.top = "46%";
+      s.style.setProperty("--dx", Math.cos(angle) * dist + "px");
+      s.style.setProperty("--dy", Math.sin(angle) * dist + "px");
+      s.style.color = ["#2f6fed", "#e36b4f", "#1f9d62", "#f0a202", "#7a4de0"][i % 5];
+      s.style.animationDelay = (i % 6) * 30 + "ms";
       box.appendChild(s);
     }
+    document.querySelectorAll(".board").forEach(board => {
+      board.classList.remove("celebrate");
+      void board.offsetWidth;
+      board.classList.add("celebrate");
+    });
+  }
+
+  function cheer() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.resume) ctx.resume();
+    [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.11;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.2, start + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.28);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.3);
+    });
+    setTimeout(() => ctx.close(), 1200);
   }
 
   const refresh = () => (cfg.render ? cfg.render() : resize());
@@ -274,6 +306,7 @@ const TracePage = (function () {
       toast(result.hint ? MESSAGES.passHint : MESSAGES.pass, "yay");
       if (cfg.onPass) cfg.onPass(result);
       burst();
+      cheer();
     });
     window.addEventListener("resize", resize);
   }
@@ -320,5 +353,5 @@ const TracePage = (function () {
     keep.focus();
   }
 
-  return { state, boards, init, resize, redraw, paintGuide, showMe, stopShow, toast, burst, check, clearAll, confirmClear, linePx };
+  return { state, boards, init, resize, redraw, paintGuide, showMe, stopShow, toast, burst, cheer, check, clearAll, confirmClear, linePx };
 })();

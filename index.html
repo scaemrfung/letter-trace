@@ -191,8 +191,8 @@ function say() {
   const g0 = state.mode === "lower" ? glyph(false) : glyph(true);
   const g1 = glyph(false);
   const line = state.mode === "both"
-    ? "Capital " + g0 + ". " + (TIPS[g0] || "") + " Lowercase " + g1 + ". " + (TIPS[g1] || "")
-    : (state.mode === "lower" ? "Lowercase " : "Capital ") + g0 + ". " + (TIPS[g0] || "");
+    ? "Capital " + g0 + ". Lowercase " + g1
+    : (state.mode === "lower" ? "Lowercase " : "Capital ") + g0;
   ClassKit.speak(line);
 }
 

@@ -139,16 +139,23 @@
     box-shadow: 0 0 0 1px rgba(36,48,68,0.05);
   }
   details.helpbox summary { cursor: pointer; font-weight: 800; }
+  .board.celebrate { animation: board-pop 700ms ease; }
+  @keyframes board-pop {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.035); box-shadow: 0 0 0 8px rgba(31, 157, 98, 0.28); }
+    100% { transform: scale(1); }
+  }
   .burst {
     position: fixed; inset: 0; pointer-events: none; z-index: 5;
   }
   .star {
-    position: absolute; font-size: 28px; animation: pop 900ms ease-out forwards;
+    position: absolute; font-size: 26px; margin-left: -0.4em; margin-top: -0.4em;
+    animation: pop 1100ms ease-out forwards;
   }
   @keyframes pop {
-    0% { transform: translateY(0) scale(0.4); opacity: 0; }
-    30% { opacity: 1; }
-    100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
+    0% { transform: translate(0, 0) scale(0.2); opacity: 0; }
+    15% { opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1.2); opacity: 0; }
   }
   button.show { background: var(--blue); color: white; }
   button.show.playing { background: #1f4fb8; }

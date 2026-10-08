@@ -119,7 +119,7 @@ function finished() { return list().every(d => state.progress[d]); }
 
 function say() {
   const d = list()[state.index] || "0";
-  ClassKit.speak("Number " + d + ". " + (TIPS[d] || ""));
+  ClassKit.speak(d);
 }
 
 function render() {
