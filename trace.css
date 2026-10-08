@@ -87,9 +87,22 @@
     position: absolute; left: 8%; right: 6%; height: 0;
     border-top: 2px solid var(--line);
   }
-  .rule.top { top: 18%; border-top: 3px solid #2f6fed; }
+  .rule.top, .rule.base { border-top: 0; }
+  .rule.top::before, .rule.base::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 10px;
+    border-radius: 6px;
+    transform: translateY(-50%);
+  }
+  .rule.top { top: 18%; }
+  .rule.top::before { background: #2f6fed; }
   .rule.mid { top: 42%; border-top: 2px dashed var(--mid); }
-  .rule.base { top: 66%; border-top: 3px solid #1f9d62; }
+  .rule.base { top: 66%; }
+  .rule.base::before { background: #1f9d62; }
   .rule.desc { top: 86%; border-top: 2px solid #b7d3ea; }
   .rule-label {
     position: absolute; left: 8px; font-size: 10px; font-weight: 800;
