@@ -190,3 +190,33 @@
   @media (max-width: 800px) {
     body.both .stage { grid-template-columns: 1fr; }
   }
+  @media (max-width: 520px) {
+    html, body { height: auto; overflow-x: hidden; }
+    body {
+      padding: calc(6px + var(--safe-t)) 10px calc(10px + var(--safe-b));
+      gap: 6px;
+    }
+    header, .inkbar, .footer, .alpha, .tip { max-width: 100%; min-width: 0; }
+    .brand { min-width: 0; }
+    .mark { width: 36px; height: 36px; font-size: 18px; border-radius: 11px; }
+    h1 { font-size: 17px; }
+    button, .seg button { padding: 8px 10px; font-size: 14px; }
+    .stage { min-height: 0; }
+    .board { min-height: 48dvh; border-radius: 16px; }
+    body.both .board { min-height: 36dvh; }
+    .tip { font-size: 14px; padding: 8px 10px; }
+    .swatches { flex-wrap: wrap; }
+    .swatch { width: 32px; height: 32px; }
+    input[type="range"] { width: 92px; }
+    .tools { width: 100%; }
+    .tools button { flex: 1 1 auto; }
+    .alpha { max-width: 100%; }
+    .footer { width: 100%; }
+    button.dots, nav.pages { width: 100%; }
+    nav.pages a { flex: 1; justify-content: center; padding: 0 6px; }
+    .toast { font-size: 20px; top: auto; bottom: max(16px, var(--safe-b)); max-width: calc(100vw - 24px); }
+  }
+  @media (max-height: 520px) {
+    body { gap: 6px; }
+    .board, body.both .board { min-height: 200px; }
+  }

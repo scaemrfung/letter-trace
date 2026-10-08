@@ -18,7 +18,8 @@
   }
   .editor[hidden] { display: none; }
   .editor .panel {
-    width: min(640px, 100%); background: white; border-radius: 22px; padding: 18px 20px;
+    width: min(640px, 100%); max-height: min(90dvh, 720px); overflow: auto;
+    background: white; border-radius: 22px; padding: 18px 20px;
     box-shadow: 0 20px 50px rgba(36, 48, 68, 0.25); display: flex; flex-direction: column; gap: 10px;
   }
   .editor h2 { margin: 0; font-size: 20px; }
@@ -37,7 +38,7 @@
   <header>
     <div class="brand">
       <div class="mark">abc</div>
-      <h1>Spelling Trace<span>Finger or Apple Pencil · iPad</span></h1>
+      <h1>Spelling Trace<span>Finger or Apple Pencil</span></h1>
     </div>
     <div class="seg">
       <button id="guideBtn" class="active">Dotted guide</button>
@@ -88,7 +89,7 @@
   <div class="alpha words" id="alpha"></div>
   <div class="footer">
   <details class="helpbox">
-    <summary>How to use this on an iPad</summary>
+    <summary>How to use this</summary>
     <p class="help">Trace the dotted word with a finger or Apple Pencil, one letter at a time. Coloured numbers show which line to make first in each letter, and arrows show which way to go. Tap Show me to watch the whole word being written, letter by letter. Tap I traced it when you are done: the green dot is only saved when every letter stays on the line and is fully traced. Letters that need another try are underlined. Teachers: press and hold Edit words to type or paste the word list (one per line, or separated by commas), then tap Share list to get a link that opens the same words on other iPads. The list and progress stay on this iPad.</p>
   </details>
   <nav class="pages" aria-label="Pages">
