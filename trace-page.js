@@ -13,7 +13,7 @@ const TRACE_RULES = {
   coverageMin: 0.80,       // at least 80% of the letter must be traced
   strokeCoverageMin: 0.75, // and every stroke (each line, curve or dot) at least 75%
   coverRadius: 0.08,       // a part of the letter counts as traced when ink comes this close
-  orderCheck: "hint"       // "off", "hint" (friendly tip, still earns the dot) or "strict" (wrong order = try again)
+  orderCheck: "strict"       // "off", "hint" (friendly tip, still earns the dot) or "strict" (wrong order = try again)
 };
 const MESSAGES = {
   empty: "Trace the letter first! ✏️",

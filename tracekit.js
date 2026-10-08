@@ -23,7 +23,7 @@
     coverRadius: 0.08,       // a spot on the letter counts as traced when ink comes this close (share of letter height, + half the pen width)
     coverageMin: 0.80,       // share of the whole letter that must be traced
     strokeCoverageMin: 0.75, // every single stroke (line, curve or dot) must be at least this traced
-    orderCheck: "hint",      // "off" | "hint" (friendly tip, still passes) | "strict" (wrong order or direction fails)
+    orderCheck: "strict",      // "off" | "hint" (friendly tip, still passes) | "strict" (wrong order or direction fails)
     animSpeed: 150,          // Show me speed, letter units per second
     animPause: 380           // Show me pause between strokes, ms
   };
