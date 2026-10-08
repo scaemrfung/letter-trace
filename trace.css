@@ -105,9 +105,13 @@
   .rule.base::before { background: #1f9d62; }
   .rule.desc { top: 86%; border-top: 2px solid #b7d3ea; }
   .rule-label {
-    position: absolute; left: 8px; font-size: 10px; font-weight: 800;
-    letter-spacing: 0.05em; text-transform: uppercase; color: #8aa0b5;
-    transform: translateY(-13px);
+    position: absolute; left: 0; font-size: 12px; font-weight: 800;
+    letter-spacing: 0; text-transform: none; color: #8aa0b5;
+    white-space: nowrap;
+    background: rgba(255, 253, 248, 0.88);
+    padding: 0 4px;
+    border-radius: 6px;
+    transform: translateY(-16px);
   }
   .rule.top .rule-label { color: #2f6fed; }
   .rule.base .rule-label { color: #1f9d62; }
