@@ -52,7 +52,7 @@ const ClassKit = (function () {
     window.speechSynthesis.speak(u);
   }
 
-  function hold(button, onHold, hint) {
+  function hold(button, onHold) {
     let timer = 0, held = false;
     button.addEventListener("contextmenu", e => e.preventDefault());
     button.addEventListener("pointerdown", () => {
@@ -60,10 +60,7 @@ const ClassKit = (function () {
       clearTimeout(timer);
       timer = setTimeout(() => { held = true; onHold(); }, 700);
     });
-    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => button.addEventListener(ev, () => {
-      clearTimeout(timer);
-      if (ev === "pointerup" && !held && hint) TracePage.toast(hint);
-    }));
+    button.addEventListener("pointerup", () => { if (!held) clearTimeout(timer); });
     button.addEventListener("click", e => { if (e.detail === 0) onHold(); });
   }
 
@@ -164,7 +161,7 @@ const ClassKit = (function () {
       const todayBtn = document.createElement("button");
       todayBtn.type = "button";
       todayBtn.textContent = "Today";
-      hold(todayBtn, () => openToday(opts.today), "Teachers: press and hold to pick today's set");
+      hold(todayBtn, () => openToday(opts.today));
       tools.appendChild(todayBtn);
     }
     const done = document.createElement("button");

@@ -48,7 +48,7 @@
       <button id="showBtn" class="show">▶ Show me</button>
       <button id="numBtn" class="active" aria-pressed="true">1 2 3 Steps</button>
     </div>
-    <button id="editBtn" title="Teachers: press and hold">✏️ Edit words</button>
+    <button id="editBtn">✏️ Edit words</button>
   </header>
 
   <div class="stage" id="stage">
@@ -244,10 +244,7 @@ editBtn.addEventListener("pointerdown", () => {
   clearTimeout(holdTimer);
   holdTimer = setTimeout(() => { held = true; openEditor(); }, 700);
 });
-["pointerup", "pointerleave", "pointercancel"].forEach(ev => editBtn.addEventListener(ev, e => {
-  clearTimeout(holdTimer);
-  if (ev === "pointerup" && !held) TracePage.toast("Teachers: press and hold to edit words ✏️");
-}));
+editBtn.addEventListener("pointerup", () => { if (!held) clearTimeout(holdTimer); });
 editBtn.addEventListener("click", e => { if (e.detail === 0) openEditor(); }); // keyboard
 editBtn.addEventListener("contextmenu", e => e.preventDefault());
 document.getElementById("cancelEdit").addEventListener("click", closeEditor);
