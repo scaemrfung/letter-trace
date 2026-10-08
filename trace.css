@@ -87,15 +87,17 @@
     position: absolute; left: 8%; right: 6%; height: 0;
     border-top: 2px solid var(--line);
   }
-  .rule.top { top: 18%; }
+  .rule.top { top: 18%; border-top: 3px solid #2f6fed; }
   .rule.mid { top: 42%; border-top: 2px dashed var(--mid); }
-  .rule.base { top: 66%; border-top: 3px solid #5f97c4; }
+  .rule.base { top: 66%; border-top: 3px solid #1f9d62; }
   .rule.desc { top: 86%; border-top: 2px solid #b7d3ea; }
   .rule-label {
     position: absolute; left: 8px; font-size: 10px; font-weight: 800;
     letter-spacing: 0.05em; text-transform: uppercase; color: #8aa0b5;
     transform: translateY(-13px);
   }
+  .rule.top .rule-label { color: #2f6fed; }
+  .rule.base .rule-label { color: #1f9d62; }
   .guide { display: none; }
   .guide-canvas {
     position: absolute; inset: 0; width: 100%; height: 100%;
