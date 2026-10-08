@@ -31,5 +31,12 @@ The address above starts working a minute or two later. In Safari on the iPad, t
 
 - Letters: https://scaemrfung.github.io/letter-trace/
 - Numbers 0-9: https://scaemrfung.github.io/letter-trace/numbers.html
+- Spelling words: https://scaemrfung.github.io/letter-trace/spelling.html
 
-Switch pages with the Letters / Numbers tabs at the bottom right.
+Switch pages with the Letters / Numbers / Spelling tabs at the bottom right.
+
+## Spelling words
+
+- Teachers press and hold **Edit words**, then type or paste words (one per line, or separated by commas). Capitals stay as typed. The list is saved on that iPad.
+- **Share list** makes a link such as `spelling.html?words=cat,dog,sun`. Opening it on another iPad loads the same words.
+- Every letter in the word must pass the tracing check. Letters that need another try are underlined and named in the message.

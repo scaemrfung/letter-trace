@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Spelling Trace">
+<title>Spelling Trace · Words</title>
+<link rel="stylesheet" href="trace.css">
+<style>
+  .alpha.words button { padding: 0 14px; font-size: 18px; }
+  #editBtn { -webkit-touch-callout: none; }
+  .editor {
+    position: fixed; inset: 0; z-index: 8; display: grid; place-items: center;
+    background: rgba(36, 48, 68, 0.35); padding: 16px;
+  }
+  .editor[hidden] { display: none; }
+  .editor .panel {
+    width: min(640px, 100%); background: white; border-radius: 22px; padding: 18px 20px;
+    box-shadow: 0 20px 50px rgba(36, 48, 68, 0.25); display: flex; flex-direction: column; gap: 10px;
+  }
+  .editor h2 { margin: 0; font-size: 20px; }
+  .editor p { margin: 0; }
+  .editor textarea, .editor input {
+    width: 100%; font: inherit; font-size: 18px; border-radius: 12px; border: 1px solid #c9d5e2;
+    padding: 10px 12px; user-select: text; -webkit-user-select: text; color: var(--ink);
+  }
+  .editor textarea { min-height: 180px; resize: vertical; }
+  .editor .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .editor .msg { min-height: 1.2em; font-weight: 700; color: var(--green); font-size: 14px; }
+  .editor .msg.bad { color: var(--coral); }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="mark">abc</div>
+      <h1>Spelling Trace<span>Finger or Apple Pencil · iPad</span></h1>
+    </div>
+    <div class="seg">
+      <button id="guideBtn" class="active">Dotted guide</button>
+      <button id="styleBtn">Solid guide</button>
+    </div>
+    <div class="seg">
+      <button id="showBtn" class="show">▶ Show me</button>
+      <button id="numBtn" class="active" aria-pressed="true">1 2 3 Steps</button>
+    </div>
+    <button id="editBtn" title="Teachers: press and hold">✏️ Edit words</button>
+  </header>
+
+  <div class="stage" id="stage">
+    <div class="board" data-board="0">
+      <div class="case-tag" id="tag0">Spelling</div>
+      <div class="rules" aria-hidden="true">
+        <div class="rule top"><span class="rule-label">top</span></div>
+        <div class="rule mid"><span class="rule-label">middle</span></div>
+        <div class="rule base"><span class="rule-label">base</span></div>
+        <div class="rule desc"><span class="rule-label">tail</span></div>
+      </div>
+      <canvas class="guide-canvas" id="g0"></canvas>
+      <canvas id="c0"></canvas>
+    </div>
+  </div>
+
+  <div class="tip" id="tip"></div>
+
+  <div class="inkbar">
+    <div class="swatches" id="swatches">
+      <button class="swatch active" data-color="#2f6fed" style="background:#2f6fed" aria-label="Blue"></button>
+      <button class="swatch" data-color="#e36b4f" style="background:#e36b4f" aria-label="Coral"></button>
+      <button class="swatch" data-color="#1f9d62" style="background:#1f9d62" aria-label="Green"></button>
+      <button class="swatch" data-color="#7a4de0" style="background:#7a4de0" aria-label="Purple"></button>
+      <button class="swatch" data-color="#f0a202" style="background:#f0a202" aria-label="Gold"></button>
+      <button class="swatch" data-color="#243044" style="background:#243044" aria-label="Black"></button>
+    </div>
+    <label class="help">Pen <input id="size" type="range" min="6" max="28" value="16"></label>
+    <div class="tools">
+      <button id="undo">Undo</button>
+      <button id="clear" class="warn">Clear</button>
+      <button id="prev">Prev</button>
+      <button id="next">Next</button>
+      <button id="done" class="good">I traced it</button>
+    </div>
+  </div>
+
+  <div class="alpha words" id="alpha"></div>
+  <div class="footer">
+  <details class="helpbox">
+    <summary>How to use this on an iPad</summary>
+    <p class="help">Trace the dotted word with a finger or Apple Pencil, one letter at a time. Coloured numbers show which line to make first in each letter, and arrows show which way to go. Tap Show me to watch the whole word being written, letter by letter. Tap I traced it when you are done: the green dot is only saved when every letter stays on the line and is fully traced. Letters that need another try are underlined. Teachers: press and hold Edit words to type or paste the word list (one per line, or separated by commas), then tap Share list to get a link that opens the same words on other iPads. The list and progress stay on this iPad.</p>
+  </details>
+  <nav class="pages" aria-label="Pages">
+    <a href="index.html">Letters</a>
+    <a href="numbers.html">Numbers</a>
+    <a href="spelling.html" class="active" aria-current="page">Spelling</a>
+  </nav>
+  </div>
+
+  <div class="editor" id="editor" hidden role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+    <div class="panel">
+      <h2 id="editorTitle">Spelling words</h2>
+      <p class="help">Type or paste words, one per line or separated by commas. Words stay lowercase unless you type capitals.</p>
+      <textarea id="wordsInput" spellcheck="false" autocapitalize="none" autocomplete="off"></textarea>
+      <div class="row">
+        <button id="saveWords" class="good">Save words</button>
+        <button id="cancelEdit">Cancel</button>
+        <button id="shareBtn">Share list</button>
+        <button id="resetProgress" class="warn">Clear green dots</button>
+      </div>
+      <input id="shareLink" readonly hidden aria-label="Share link">
+      <p class="msg" id="editorMsg" role="status"></p>
+    </div>
+  </div>
+
+  <div class="burst" id="burst"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="tracekit.js"></script>
+<script src="trace-page.js"></script>
+<script>
+/* Spelling page. Shared logic and the tracing check settings (TRACE_RULES) are in trace-page.js. */
+const DEFAULT_WORDS = ["cat", "dog", "sun", "map", "pig", "the"];
+const WORDS_KEY = "spellingWords", PROGRESS_KEY = "spellingProgress";
+MESSAGES.empty = "Trace the word first! ✏️";
+MESSAGES.partial = "Almost! Trace every letter. 🙂";
+
+// Split a pasted list into words: new lines, commas or semicolons. Keeps capitals as typed.
+function parseWords(text) {
+  const removed = new Set(), out = [];
+  String(text || "").split(/[\n,;]+/).forEach(raw => {
+    const clean = raw.replace(/[^A-Za-z0-9 ]/g, ch => { if (ch.trim()) removed.add(ch); return ""; })
+      .replace(/\s+/g, " ").trim().slice(0, 24);
+    if (clean && !out.includes(clean)) out.push(clean);
+  });
+  return { words: out.slice(0, 60), removed: Array.from(removed) };
+}
+function loadWords() {
+  try {
+    const w = JSON.parse(localStorage.getItem(WORDS_KEY) || "null");
+    if (Array.isArray(w) && w.length) return w;
+  } catch (e) {}
+  return DEFAULT_WORDS.slice();
+}
+function saveWords(words) { localStorage.setItem(WORDS_KEY, JSON.stringify(words)); }
+
+const state = Object.assign(TracePage.state, {
+  index: 0,
+  mode: "word",
+  words: loadWords(),
+  progress: JSON.parse(localStorage.getItem(PROGRESS_KEY) || "{}")
+});
+const boards = TracePage.boards;
+
+// A shared link (?words=cat,dog,sun) replaces the list on this iPad.
+(function loadSharedList() {
+  const q = new URLSearchParams(location.search).get("words");
+  if (q == null) return;
+  const parsed = parseWords(q);
+  if (parsed.words.length) {
+    state.words = parsed.words;
+    saveWords(state.words);
+    state.loadedFromLink = parsed.words.length;
+  }
+  try { history.replaceState(null, "", location.pathname); } catch (e) {}
+})();
+
+const word = () => state.words[state.index] || "";
+
+// Words use the same lines as the other pages. A long word that would not fit
+// shrinks, and the lines move with it so letters still sit exactly on them.
+function layoutWord(board, fig, rect) {
+  const el = board.el, w = rect.width, h = rect.height;
+  const span = isFinite(fig.minX) ? fig.maxX - fig.minX + TraceKit.DEFAULTS.guideWidth : 0;
+  const std = 0.48 * h / 100, fit = span ? 0.86 * w / span : std;
+  const rules = { top: 0, mid: 50, base: 100, desc: 141.67 };
+  if (fit >= std) {
+    Object.keys(rules).forEach(k => { el.querySelector(".rule." + k).style.top = ""; });
+  } else {
+    const s = fit, top = 0.52 * h - 70.8 * s;
+    Object.keys(rules).forEach(k => {
+      const r = el.querySelector(".rule." + k);
+      const bw = parseFloat(getComputedStyle(r).borderTopWidth) || 0;
+      r.style.top = (top + rules[k] * s - bw / 2) + "px";
+    });
+  }
+  return TraceKit.layout(fig, w, h, Object.assign({ maxWidth: 0.9 }, TracePage.linePx(el)));
+}
+
+function render() {
+  document.body.classList.toggle("solid", state.style === "solid");
+  if (state.index >= state.words.length) state.index = 0;
+  const w = word();
+  document.getElementById("tip").innerHTML = "<strong>Word " + (state.index + 1) + " of " + state.words.length + ": " +
+    w.replace(/[<>&]/g, "") + "</strong> · Trace each letter, then tap I traced it.";
+  const row = document.getElementById("alpha");
+  row.innerHTML = "";
+  state.words.forEach((wd, i) => {
+    const b = document.createElement("button");
+    b.textContent = wd;
+    b.classList.toggle("active", i === state.index);
+    b.classList.toggle("done", !!state.progress[wd]);
+    b.addEventListener("click", () => { state.index = i; clearAll(); render(); });
+    row.appendChild(b);
+  });
+  const act = row.children[state.index];
+  if (act && act.scrollIntoView) act.scrollIntoView({ block: "nearest", inline: "nearest" });
+  TracePage.resize();
+}
+
+function clearAll() { TracePage.clearAll(); }
+
+document.getElementById("next").addEventListener("click", () => {
+  state.index = (state.index + 1) % state.words.length; clearAll(); render();
+});
+document.getElementById("prev").addEventListener("click", () => {
+  state.index = (state.index + state.words.length - 1) % state.words.length; clearAll(); render();
+});
+
+/* ----- Teacher word editor (press and hold so little fingers don't open it) ----- */
+const editor = document.getElementById("editor"), input = document.getElementById("wordsInput");
+const msg = (text, bad) => { const m = document.getElementById("editorMsg"); m.textContent = text || ""; m.classList.toggle("bad", !!bad); };
+function openEditor() {
+  input.value = state.words.join("\n");
+  document.getElementById("shareLink").hidden = true;
+  msg("");
+  editor.hidden = false;
+}
+function closeEditor() { editor.hidden = true; }
+let holdTimer = 0, held = false;
+const editBtn = document.getElementById("editBtn");
+editBtn.addEventListener("pointerdown", () => {
+  held = false;
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => { held = true; openEditor(); }, 700);
+});
+["pointerup", "pointerleave", "pointercancel"].forEach(ev => editBtn.addEventListener(ev, e => {
+  clearTimeout(holdTimer);
+  if (ev === "pointerup" && !held) TracePage.toast("Teachers: press and hold to edit words ✏️");
+}));
+editBtn.addEventListener("click", e => { if (e.detail === 0) openEditor(); }); // keyboard
+editBtn.addEventListener("contextmenu", e => e.preventDefault());
+document.getElementById("cancelEdit").addEventListener("click", closeEditor);
+document.getElementById("saveWords").addEventListener("click", () => {
+  const parsed = parseWords(input.value);
+  if (!parsed.words.length) { msg("Add at least one word.", true); return; }
+  state.words = parsed.words;
+  saveWords(state.words);
+  state.index = 0;
+  closeEditor();
+  clearAll();
+  render();
+  TracePage.toast("Saved " + parsed.words.length + " word" + (parsed.words.length === 1 ? "" : "s") +
+    (parsed.removed.length ? "<small>Left out: " + parsed.removed.join(" ").replace(/[<>&]/g, "") + "</small>" : ""), "yay");
+});
+document.getElementById("shareBtn").addEventListener("click", async () => {
+  const parsed = parseWords(input.value);
+  if (!parsed.words.length) { msg("Add at least one word first.", true); return; }
+  const url = location.origin + location.pathname + "?words=" + parsed.words.map(encodeURIComponent).join(",");
+  const box = document.getElementById("shareLink");
+  box.value = url; box.hidden = false;
+  try {
+    if (navigator.share) { await navigator.share({ title: "Spelling words", url }); msg("Shared."); return; }
+  } catch (e) { if (e && e.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(url); msg("Link copied. Open it on the other iPads."); }
+  catch (e) { box.select(); msg("Copy this link and open it on the other iPads."); }
+});
+document.getElementById("resetProgress").addEventListener("click", () => {
+  state.progress = {};
+  localStorage.setItem(PROGRESS_KEY, "{}");
+  msg("Green dots cleared.");
+  render();
+});
+
+TracePage.init({
+  texts: () => [word()],
+  layout: layoutWord,
+  render,
+  message: result => {
+    const r = result.results[0];
+    if (!r || result.reason === "empty") return null;
+    const bad = (r.badLetters || []).map(l => l.char);
+    const base = MESSAGES[result.reason] || MESSAGES.off;
+    return bad.length && r.letters.length > 1 ? base + "<small>Try these letters again: " + bad.join(", ") + "</small>" : base;
+  },
+  onPass: () => {
+    state.progress[word()] = 1;
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(state.progress));
+    render();
+  }
+});
+render();
+if (state.loadedFromLink) TracePage.toast("Loaded " + state.loadedFromLink + " words from the link 📋", "yay");
+</script>
+</body>
+</html>

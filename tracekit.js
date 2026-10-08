@@ -158,7 +158,7 @@
   // Build a figure (one letter or a whole word) in line units.
   function compose(text, opts) {
     opts = opts || {};
-    const gap = opts.gap != null ? opts.gap : 26, space = opts.space != null ? opts.space : 50;
+    const gap = opts.gap != null ? opts.gap : 20, space = opts.space != null ? opts.space : 50;
     const W = opts.guideWidth || DEFAULTS.guideWidth;
     const strokes = [], letters = [];
     let x = 0, li = 0;
@@ -429,8 +429,29 @@
       if (neg > pos && neg > 0.3 * st.len) { res.directionOk = false; res.wrongWay.push(gi); }
     });
 
+    // 4) Per letter (for words): every letter must be on the line and traced.
+    const letterIds = Array.from(new Set(placed.map(st => st.letter || 0)));
+    res.letters = letterIds.map(li => {
+      const idx = placed.filter(st => (st.letter || 0) === li).map(st => st.index);
+      let n = 0, offN = 0;
+      ink.forEach(p => { if ((placed[p.near.gi].letter || 0) === li) { n++; if (!p.on) offN++; } });
+      const cov = idx.reduce((a, gi) => a + per[gi].c, 0) / Math.max(1, idx.reduce((a, gi) => a + per[gi].n, 0));
+      const minStroke = Math.min.apply(null, idx.map(gi => per[gi].c / per[gi].n));
+      const xs = [], ys = [];
+      idx.forEach(gi => placed[gi].px.forEach(p => { xs.push(p[0]); ys.push(p[1]); }));
+      const onLine = n ? 1 - offN / n : 1;
+      let reason = null;
+      if (onLine < cfg.inkOnLineMin) reason = "off";
+      else if (cov < cfg.coverageMin || minStroke < cfg.strokeCoverageMin) reason = "partial";
+      return { index: li, char: placed[idx[0]].char, reason, onLine, coverage: cov,
+        box: { minX: Math.min.apply(null, xs), maxX: Math.max.apply(null, xs), maxY: Math.max.apply(null, ys) } };
+    });
+    res.badLetters = res.letters.filter(l => l.reason);
+
     if (res.inkOnLine < cfg.inkOnLineMin) res.reason = "off";
     else if (res.coverage < cfg.coverageMin || res.strokeCoverage.some(c => c < cfg.strokeCoverageMin)) res.reason = "partial";
+    else if (res.badLetters.some(l => l.reason === "off")) res.reason = "off";
+    else if (res.badLetters.length) res.reason = "partial";
     else if (cfg.orderCheck === "strict" && !(res.orderOk && res.directionOk)) res.reason = "order";
     res.pass = !res.reason;
     res.hint = res.pass && cfg.orderCheck !== "off" && !(res.orderOk && res.directionOk);
@@ -441,6 +462,14 @@
   function drawFeedback(ctx, res, T) {
     if (!res) return;
     ctx.save();
+    // In a word, underline the letters that need another try.
+    if (res.letters && res.letters.length > 1) {
+      ctx.strokeStyle = "rgba(227, 107, 79, 0.85)"; ctx.lineCap = "round"; ctx.lineWidth = Math.max(4, T.cap * 0.03);
+      (res.badLetters || []).forEach(l => {
+        const y = Math.min(T.h - 6, l.box.maxY + T.cap * 0.14);
+        ctx.beginPath(); ctx.moveTo(l.box.minX - 4, y); ctx.lineTo(l.box.maxX + 4, y); ctx.stroke();
+      });
+    }
     ctx.fillStyle = "rgba(227, 75, 60, 0.30)";
     res.offPoints.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 5, 0, Math.PI * 2); ctx.fill(); });
     const r = Math.max(4, T.cap * 0.025);
