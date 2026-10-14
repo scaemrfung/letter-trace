@@ -32,6 +32,20 @@
   .editor .row { display: flex; gap: 8px; flex-wrap: wrap; }
   .editor .msg { min-height: 1.2em; font-weight: 700; color: var(--green); font-size: 14px; }
   .editor .msg.bad { color: var(--coral); }
+  #lessonBtn { font-weight: 800; }
+  .alpha.words button.tricky { border: 2px solid #f0a202; background: #fff6df; }
+  .alpha.words button.tricky::before { content: "★ "; color: #d48a00; }
+  .alpha.words button.tricky.active { background: #f0a202; color: white; }
+  .alpha.words button.tricky.active::before { color: white; }
+  .tricky-tag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #fff0c2; color: #8a5a00; font-size: 0.85em; }
+  .lessons .grade h3 { margin: 8px 0 6px; font-size: 18px; }
+  .lessons .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+  .lessons .list button { min-height: 56px; text-align: left; padding: 8px 12px; border-radius: 14px; line-height: 1.2; }
+  .lessons .list button b { display: block; font-size: 17px; }
+  .lessons .list button span { font-size: 14px; opacity: 0.8; }
+  .lessons .list button.current { outline: 3px solid var(--green); }
+  .lessons .list button .count { float: right; color: var(--green); font-weight: 800; }
+  .lessons .mine { width: 100%; min-height: 56px; font-size: 17px; font-weight: 800; }
 </style>
 </head>
 <body>
@@ -48,6 +62,7 @@
       <button id="showBtn" class="show">▶ Show me</button>
       <button id="numBtn" class="active" aria-pressed="true">1 2 3 Steps</button>
     </div>
+    <button id="lessonBtn" aria-haspopup="dialog">📚 Lessons</button>
     <button id="editBtn">✏️ Edit words</button>
   </header>
 
@@ -91,7 +106,7 @@
   <button type="button" id="clearDots" class="dots">Clear green dots</button>
   <details class="helpbox">
     <summary>How to use this</summary>
-    <p class="help">Trace the dotted word with a finger or Apple Pencil, one letter at a time. Coloured numbers show which line to make first in each letter, and arrows show which way to go. Tap Show me to watch the whole word being written, letter by letter. Tap I traced it when you are done: the green dot is only saved when every letter stays on the line and is fully traced. Letters that need another try are underlined. Teachers: press and hold Edit words to type or paste the word list (one per line, or separated by commas), then tap Share list to get a link that opens the same words on other iPads. The list and progress stay on this iPad.</p>
+    <p class="help">Trace the dotted word with a finger or Apple Pencil, one letter at a time. Coloured numbers show which line to make first in each letter, and arrows show which way to go. Tap Show me to watch the whole word being written, letter by letter. Tap I traced it when you are done: the green dot is only saved when every letter stays on the line and is fully traced. Letters that need another try are underlined. Tap Lessons to pick a Grade 1 lesson: its words load right away, and tricky words have a gold ★. Teachers: press and hold Edit words to type or paste the word list (one per line, or separated by commas), then tap Share list to get a link that opens the same words on other iPads. The list and progress stay on this iPad.</p>
   </details>
   <nav class="pages" aria-label="Pages">
     <a href="index.html">Letters</a>
@@ -116,11 +131,27 @@
     </div>
   </div>
 
+  <div class="editor lessons" id="lessons" hidden role="dialog" aria-modal="true" aria-labelledby="lessonsTitle">
+    <div class="panel">
+      <h2 id="lessonsTitle">Pick a word list</h2>
+      <button id="mineBtn" class="mine">✏️ My words</button>
+      <div id="gradeList"></div>
+      <p class="help">★ marks a tricky word (an irregular word to learn by heart).</p>
+      <div class="row">
+        <button id="closeLessons">Close</button>
+        <button id="shareLesson">Share this lesson</button>
+      </div>
+      <input id="lessonLink" readonly hidden aria-label="Lesson link">
+      <p class="msg" id="lessonMsg" role="status"></p>
+    </div>
+  </div>
+
   <div class="burst" id="burst"></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="tracekit.js"></script>
 <script src="trace-page.js"></script>
 <script src="class.js"></script>
+<script src="lessons.js"></script>
 <script>
 /* Spelling page. Shared logic and the tracing check settings (TRACE_RULES) are in trace-page.js. */
 const DEFAULT_WORDS = ["cat", "dog", "sun", "map", "pig", "the"];
@@ -147,22 +178,71 @@ function loadWords() {
 }
 function saveWords(words) { localStorage.setItem(WORDS_KEY, JSON.stringify(words)); }
 
+/* ----- Lessons: grade -> lessons, from lessons.js. "mine" is the teacher's own list. ----- */
+const SOURCE_KEY = "spellingSource";
+const GRADES = (window.SPELLING_LESSONS && SPELLING_LESSONS.grades) || [];
+function findLesson(src) {
+  const m = /^g([^:]+):(.+)$/.exec(src || "");
+  if (!m) return null;
+  const g = GRADES.find(x => x.id === m[1]);
+  const l = g && g.lessons.find(x => x.id === m[2]);
+  return l ? { grade: g, lesson: l } : null;
+}
+function lessonLabel(f) { return f.grade.name + " – Lesson " + f.lesson.id + " – " + f.lesson.topic; }
+function lessonList(l) {
+  const tricky = new Set(l.tricky), out = l.words.filter(w => !tricky.has(w));
+  l.tricky.forEach(w => { if (!out.includes(w)) out.push(w); });
+  return out;
+}
+function loadSource() {
+  const s = localStorage.getItem(SOURCE_KEY);
+  return findLesson(s) ? s : "mine";
+}
 const state = Object.assign(TracePage.state, {
   index: 0,
   mode: "word",
-  words: loadWords(),
+  source: loadSource(),
+  words: [],
+  tricky: new Set(),
   progress: {}
 });
+const progressKey = () => state.source === "mine" ? PROGRESS_KEY : PROGRESS_KEY + ":" + state.source;
+function applySource() {
+  const f = findLesson(state.source);
+  if (!f) state.source = "mine";
+  state.words = f ? lessonList(f.lesson) : loadWords();
+  state.tricky = new Set(f ? f.lesson.tricky : []);
+  document.getElementById("tag0").textContent = f ? lessonLabel(f) : "My words";
+}
+function setSource(src) {
+  state.source = findLesson(src) ? src : "mine";
+  localStorage.setItem(SOURCE_KEY, state.source);
+  applySource();
+  reloadProgress();
+}
+applySource();
 const boards = TracePage.boards;
 
 // A shared link (?words=cat,dog,sun) replaces the list on this iPad.
 (function loadSharedList() {
-  const q = new URLSearchParams(location.search).get("words");
+  const params = new URLSearchParams(location.search);
+  const lq = params.get("lesson");
+  if (lq != null) {
+    const gid = params.get("grade") || "1";
+    const src = "g" + gid + ":" + String(lq).trim().replace(/[^0-9A-Za-z]/g, "");
+    const f = findLesson(src);
+    if (f) { state.source = src; localStorage.setItem(SOURCE_KEY, src); applySource(); state.loadedLesson = lessonLabel(f); }
+    else state.badLesson = String(lq).slice(0, 10);
+    try { history.replaceState(null, "", location.pathname); } catch (e) {}
+    return;
+  }
+  const q = params.get("words");
   if (q == null) return;
   const parsed = parseWords(q);
   if (parsed.words.length) {
     state.words = parsed.words;
     saveWords(state.words);
+    state.source = "mine"; localStorage.setItem(SOURCE_KEY, "mine"); applySource();
     state.loadedFromLink = parsed.words.length;
   }
   try { history.replaceState(null, "", location.pathname); } catch (e) {}
@@ -195,12 +275,14 @@ function render() {
   if (state.index >= state.words.length) state.index = 0;
   const w = word();
   document.getElementById("tip").innerHTML = "<strong>Word " + (state.index + 1) + " of " + state.words.length + ": " +
-    w.replace(/[<>&]/g, "") + "</strong> · Trace each letter, then tap I traced it.";
+    w.replace(/[<>&]/g, "") + "</strong>" + (state.tricky.has(w) ? '<span class="tricky-tag">★ tricky word</span>' : "") +
+    " · Trace each letter, then tap I traced it.";
   const row = document.getElementById("alpha");
   row.innerHTML = "";
   state.words.forEach((wd, i) => {
     const b = document.createElement("button");
     b.textContent = wd;
+    if (state.tricky.has(wd)) { b.classList.add("tricky"); b.title = "Tricky word"; b.setAttribute("aria-label", wd + ", tricky word"); }
     b.classList.toggle("active", i === state.index);
     b.classList.toggle("done", !!state.progress[wd]);
     b.addEventListener("click", () => { state.index = i; clearAll(); render(); say(); });
@@ -210,7 +292,7 @@ function render() {
   if (act && act.scrollIntoView) act.scrollIntoView({ block: "nearest", inline: "nearest" });
   ClassKit.setFinished(state.words.length > 0 && state.words.every(w => state.progress[w]), {
     title: "You traced them",
-    body: "The spelling list is finished."
+    body: state.source === "mine" ? "The spelling list is finished." : "You finished " + lessonLabel(findLesson(state.source)) + "."
   });
   TracePage.resize();
 }
@@ -232,7 +314,7 @@ document.getElementById("prev").addEventListener("click", () => {
 const editor = document.getElementById("editor"), input = document.getElementById("wordsInput");
 const msg = (text, bad) => { const m = document.getElementById("editorMsg"); m.textContent = text || ""; m.classList.toggle("bad", !!bad); };
 function openEditor() {
-  input.value = state.words.join("\n");
+  input.value = loadWords().join("\n");
   document.getElementById("shareLink").hidden = true;
   msg("");
   editor.hidden = false;
@@ -252,12 +334,9 @@ document.getElementById("cancelEdit").addEventListener("click", closeEditor);
 document.getElementById("saveWords").addEventListener("click", () => {
   const parsed = parseWords(input.value);
   if (!parsed.words.length) { msg("Add at least one word.", true); return; }
-  state.words = parsed.words;
-  saveWords(state.words);
-  state.index = 0;
+  saveWords(parsed.words);
   closeEditor();
-  clearAll();
-  render();
+  setSource("mine");
   TracePage.toast("Saved " + parsed.words.length + " word" + (parsed.words.length === 1 ? "" : "s") +
     (parsed.removed.length ? "<small>Left out: " + parsed.removed.join(" ").replace(/[<>&]/g, "") + "</small>" : ""), "yay");
 });
@@ -282,7 +361,7 @@ function askClearDots() {
     empty: "No words have a green dot yet.",
     onClear: () => {
       state.progress = {};
-      ClassKit.saveMine(PROGRESS_KEY, state.progress);
+      ClassKit.saveMine(progressKey(), state.progress);
       msg("Green dots cleared.");
       render();
     }
@@ -290,13 +369,58 @@ function askClearDots() {
 }
 
 function reloadProgress() {
-  state.progress = ClassKit.mine(PROGRESS_KEY);
+  state.progress = ClassKit.mine(progressKey());
   state.index = 0;
   clearAll();
   render();
 }
 
 ClassKit.mount({ onChange: reloadProgress });
+
+/* ----- Lesson picker ----- */
+const lessonsEl = document.getElementById("lessons");
+const lmsg = t => { document.getElementById("lessonMsg").textContent = t || ""; };
+function openLessons() {
+  const box = document.getElementById("gradeList");
+  box.innerHTML = "";
+  GRADES.forEach(g => {
+    const sec = document.createElement("section"); sec.className = "grade";
+    const h = document.createElement("h3"); h.textContent = g.name + " Lessons"; sec.appendChild(h);
+    const list = document.createElement("div"); list.className = "list";
+    g.lessons.forEach(l => {
+      const src = "g" + g.id + ":" + l.id, b = document.createElement("button");
+      const words = lessonList(l), done = ClassKit.mine(PROGRESS_KEY + ":" + src), n = words.filter(w => done[w]).length;
+      b.innerHTML = "<b>Lesson " + l.id + (n ? '<span class="count">' + (n === words.length ? "✓" : n + "/" + words.length) + "</span>" : "") +
+        "</b><span>" + l.topic.replace(/[<>&]/g, "") + "</span>";
+      b.setAttribute("aria-label", g.name + " – Lesson " + l.id + " – " + l.topic);
+      b.dataset.src = src;
+      b.classList.toggle("current", src === state.source);
+      b.addEventListener("click", () => { closeLessons(); setSource(src); say(); });
+      list.appendChild(b);
+    });
+    sec.appendChild(list); box.appendChild(sec);
+  });
+  document.getElementById("mineBtn").classList.toggle("active", state.source === "mine");
+  document.getElementById("shareLesson").hidden = state.source === "mine";
+  document.getElementById("lessonLink").hidden = true;
+  lmsg("");
+  lessonsEl.hidden = false;
+  const cur = box.querySelector("button.current");
+  if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: "center" });
+}
+function closeLessons() { lessonsEl.hidden = true; }
+document.getElementById("lessonBtn").addEventListener("click", openLessons);
+document.getElementById("closeLessons").addEventListener("click", closeLessons);
+document.getElementById("mineBtn").addEventListener("click", () => { closeLessons(); setSource("mine"); say(); });
+document.getElementById("shareLesson").addEventListener("click", async () => {
+  const f = findLesson(state.source); if (!f) return;
+  const url = location.origin + location.pathname + "?grade=" + encodeURIComponent(f.grade.id) + "&lesson=" + encodeURIComponent(f.lesson.id);
+  const box = document.getElementById("lessonLink"); box.value = url; box.hidden = false;
+  try { if (navigator.share) { await navigator.share({ title: lessonLabel(f), url }); lmsg("Shared."); return; } }
+  catch (e) { if (e && e.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(url); lmsg("Link copied. Open it on the other iPads."); }
+  catch (e) { box.select(); lmsg("Copy this link and open it on the other iPads."); }
+});
 
 TracePage.init({
   texts: () => [word()],
@@ -312,7 +436,7 @@ TracePage.init({
   onPass: () => {
     const before = state.words.length > 0 && state.words.every(w => state.progress[w]);
     state.progress[word()] = 1;
-    ClassKit.saveMine(PROGRESS_KEY, state.progress);
+    ClassKit.saveMine(progressKey(), state.progress);
     render();
     const now = state.words.every(w => state.progress[w]);
     if (!before && now) ClassKit.showFinish();
@@ -320,6 +444,8 @@ TracePage.init({
 });
 reloadProgress();
 ClassKit.hold(document.getElementById("clearDots"), askClearDots);
+if (state.loadedLesson) TracePage.toast("Opened " + state.loadedLesson.replace(/[<>&]/g, "") + " 📚", "yay");
+if (state.badLesson) TracePage.toast("Lesson " + state.badLesson.replace(/[<>&]/g, "") + " was not found", "");
 if (state.loadedFromLink) TracePage.toast("Loaded " + state.loadedFromLink + " words from the link 📋", "yay");
 </script>
 </body>
