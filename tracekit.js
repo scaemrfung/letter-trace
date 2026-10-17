@@ -408,18 +408,40 @@
     res.strokeCoverage = per.map(s => s.c / s.n);
 
     // 3) Order and direction (forgiving; a hint unless orderCheck is "strict").
+    // Each guide stroke is matched on its own, not by the single nearest guide point, so strokes that share a
+    // line (u: the cup goes up the right side, then the second stroke comes back down it) are not mixed up.
+    const byG = placed.map(() => []);
+    gs.forEach(g => byG[g.gi].push(g));
+    const near = (p, gi) => {
+      let best = Infinity, d = 0;
+      for (const g of byG[gi]) { const q = (g.x - p.x) * (g.x - p.x) + (g.y - p.y) * (g.y - p.y); if (q < best) { best = q; d = g.d; } }
+      return best <= (tolBase + p.pr) * (tolBase + p.pr) ? d : null;
+    };
+    const total = {};
+    ink.forEach(p => { total[p.si] = (total[p.si] || 0) + 1; });
+    const proj = placed.map((st, gi) => ink.map(p => near(p, gi)));
+    // The child's stroke that best traced each guide stroke: it covers most of that stroke, and most of
+    // the child's stroke lies on it. (Coverage alone can't separate a stroke that runs right beside another.)
     const owner = placed.map((st, gi) => {
       const counts = {};
-      ink.forEach(p => { if (p.on && p.near.gi === gi) counts[p.si] = (counts[p.si] || 0) + 1; });
-      let bestSi = -1, bestN = 2;
-      Object.keys(counts).forEach(si => { if (counts[si] > bestN) { bestN = counts[si]; bestSi = +si; } });
+      ink.forEach((p, k) => { if (proj[gi][k] !== null) counts[p.si] = (counts[p.si] || 0) + 1; });
+      let bestSi = -1, bestScore = 0;
+      Object.keys(counts).forEach(key => {
+        const si = +key;
+        if (counts[key] <= 2) return;
+        const mine = ink.filter(p => p.si === si);
+        const cov = byG[gi].filter(g => mine.some(p => Math.hypot(p.x - g.x, p.y - g.y) <= covBase + p.pr)).length / byG[gi].length;
+        const score = cov * (0.5 + 0.5 * counts[key] / total[si]);
+        if (score > bestScore) { bestScore = score; bestSi = si; }
+      });
       return bestSi;
     });
     let last = -1;
     owner.forEach(o => { if (o < 0) return; if (o < last) res.orderOk = false; last = Math.max(last, o); });
     placed.forEach((st, gi) => {
       if (st.dot || owner[gi] < 0) return;
-      const seq = ink.filter(p => p.on && p.si === owner[gi] && p.near.gi === gi).map(p => p.near.d);
+      const seq = [];
+      ink.forEach((p, k) => { if (p.si === owner[gi] && proj[gi][k] !== null) seq.push(proj[gi][k]); });
       let pos = 0, neg = 0;
       for (let k = 1; k < seq.length; k++) {
         let dd = seq[k] - seq[k - 1];
