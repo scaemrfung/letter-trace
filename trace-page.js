@@ -36,7 +36,7 @@ const TracePage = (function () {
   const boards = Array.from(document.querySelectorAll(".board")).map(el => {
     const canvas = el.querySelector("canvas:not(.guide-canvas)"), guide = el.querySelector(".guide-canvas");
     return { el, canvas, guide, ctx: canvas.getContext("2d"), gctx: guide.getContext("2d"),
-      strokes: [], current: null, pointer: null, fig: null, T: null, placed: [], feedback: null };
+      strokes: [], current: null, pointer: null, pointerType: null, fig: null, T: null, placed: [], feedback: null };
   });
   let cfg = { texts: () => [], render: null, onPass: null, message: null, layout: null };
   const visible = () => boards.filter(b => !b.el.hidden);
@@ -168,12 +168,55 @@ const TracePage = (function () {
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   }
 
+  /* ----- Palm rejection for Apple Pencil -----
+     "Pencil only": once a pen is seen, finger/palm touches on the boards are ignored.
+     Stored as letterTracePencil: "1" on, "0" switched off by a teacher, missing = no pen seen yet. */
+  const PENCIL_KEY = "letterTracePencil";
+  // In finger mode, a touch that starts wider or taller than this (CSS px) is treated as a palm.
+  // iPad fingers report about 40-60 px, so the limit is set well above that to never block a finger.
+  // Devices that don't measure contact size report 1, so nothing is blocked there.
+  const PALM_PX = 90;
+  let pencilOnly = localStorage.getItem(PENCIL_KEY) === "1";
+  function setPencilOnly(on, remember) {
+    pencilOnly = !!on;
+    if (remember) localStorage.setItem(PENCIL_KEY, on ? "1" : "0");
+    const b = $("pencilBtn");
+    if (b) { b.classList.toggle("active", pencilOnly); b.setAttribute("aria-pressed", String(pencilOnly)); }
+  }
+  function discard(board) {
+    if (board.pointer !== null) {
+      try { board.canvas.releasePointerCapture(board.pointer); } catch (e) {}
+    }
+    board.current = null;
+    board.pointer = null;
+    board.pointerType = null;
+    redraw(board);
+  }
+  // Any pen anywhere on the page: switch on Pencil only (unless a teacher switched it off),
+  // and drop touch strokes in progress, which were probably the palm.
+  document.addEventListener("pointerdown", e => {
+    if (e.pointerType !== "pen") return;
+    if (!pencilOnly && localStorage.getItem(PENCIL_KEY) !== "0") {
+      setPencilOnly(true, true);
+      toast("✏️ Pencil only is on: fingers and palms won't draw", "");
+    }
+    boards.forEach(b => { if (b.pointer !== null && b.pointerType === "touch") discard(b); });
+  }, true);
+  function palmLike(e) {
+    return e.pointerType === "touch" && (e.width > PALM_PX || e.height > PALM_PX);
+  }
+
   boards.forEach(board => {
     const c = board.canvas;
     c.addEventListener("pointerdown", e => {
-      if (board.pointer !== null) return;
+      if (e.pointerType === "touch" && (pencilOnly || palmLike(e))) return;
+      if (board.pointer !== null) {
+        if (e.pointerType === "pen" && board.pointerType === "touch") discard(board);
+        else return;
+      }
       c.setPointerCapture(e.pointerId);
       board.pointer = e.pointerId;
+      board.pointerType = e.pointerType;
       board.feedback = null;
       board.current = { color: state.color, size: state.size, points: [pos(board, e)] };
       redraw(board);
@@ -189,6 +232,7 @@ const TracePage = (function () {
       if (board.current && board.current.points.length) board.strokes.push(board.current);
       board.current = null;
       board.pointer = null;
+      board.pointerType = null;
       redraw(board);
     };
     c.addEventListener("pointerup", end);
@@ -308,6 +352,20 @@ const TracePage = (function () {
       burst();
       cheer();
     });
+    // Pencil only toggle, next to Sound in the class bar (or in the ink bar).
+    const pb = document.createElement("button");
+    pb.type = "button";
+    pb.id = "pencilBtn";
+    pb.textContent = "✏️ Pencil only";
+    pb.title = "On: only Apple Pencil draws, so a resting hand doesn't. Off: fingers draw.";
+    pb.addEventListener("click", () => {
+      setPencilOnly(!pencilOnly, true);
+      toast(pencilOnly ? "✏️ Pencil only: fingers and palms won't draw" : "☝️ Fingers can draw", "");
+    });
+    const home = $("classTools");
+    if (home) home.insertBefore(pb, $("finishedBtn") || null);
+    else document.querySelector(".inkbar").insertBefore(pb, document.querySelector(".inkbar .tools"));
+    setPencilOnly(pencilOnly, false);
     window.addEventListener("resize", resize);
   }
 
