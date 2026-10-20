@@ -208,6 +208,7 @@ function cheer() {
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtx) return;
   const ctx = new AudioCtx();
+  if (ctx.resume) ctx.resume(); // Safari starts audio suspended
   [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -250,6 +251,7 @@ function hold(button, onHold) {
     timer = window.setTimeout(() => { held = true; onHold(); }, 700);
   });
   button.addEventListener("pointerup", () => { if (!held) window.clearTimeout(timer); });
+  button.addEventListener("click", (event) => { if (event.detail === 0) onHold(); }); // keyboard (Enter / Space)
 }
 
 function sheet(title, body, build) {

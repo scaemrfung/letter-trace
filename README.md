@@ -23,7 +23,9 @@ The address above starts working a minute or two later. In Safari on the iPad, t
 
 - Each letter shows numbered start dots (1, 2, 3...) and arrows for the order and direction of each line, in manuscript (ball-and-stick) style.
 - **Show me** animates the strokes in order. **1 2 3 Steps** hides or shows the numbers and arrows (the setting is remembered).
-- **I traced it** only saves the green dot when at least 85% of the ink is on the letter and at least 80% of the letter (75% of every stroke) is traced. Otherwise the child sees "Try again, stay on the line!", with off-line ink marked in red and missed parts in orange. Order and direction only give a friendly tip.
+- **I traced it** only saves the green dot when at least 85% of the ink is on the letter and at least 80% of the letter (75% of every stroke) is traced. Otherwise the child sees "Try again, stay on the line!", with off-line ink marked in red and missed parts in orange.
+- Stroke order and direction are checked strictly (`orderCheck: "strict"` in `TRACE_RULES`): starting with the wrong line, or drawing a line the wrong way, means "Try again! Start at 1 and follow the arrows." Lifting the pencil at a corner, or drawing two lines in one go (u), is fine. In a word, the letter that needs another try is underlined and named. Set `orderCheck` to `"hint"` for a friendly tip instead, or `"off"`.
+- **Dotted guide** / **Solid guide** pick the guide style; tap the highlighted one again to hide the guide.
 - The thresholds are in `TRACE_RULES` at the top of `trace-page.js` (shared by every page).
 - `tracekit.js` has the stroke data (letters and digits), drawing, animation and accuracy check. `trace-page.js` and `trace.css` hold the shared page logic and look.
 
@@ -32,6 +34,7 @@ The address above starts working a minute or two later. In Safari on the iPad, t
 - Letters: https://scaemrfung.github.io/letter-trace/
 - Numbers 0-9: https://scaemrfung.github.io/letter-trace/numbers.html
 - Spelling words: https://scaemrfung.github.io/letter-trace/spelling.html
+- Word mix: https://scaemrfung.github.io/letter-trace/word-mix/ (files in `word-mix/`)
 
 Switch pages with the Letters / Numbers / Spelling tabs at the bottom right.
 
