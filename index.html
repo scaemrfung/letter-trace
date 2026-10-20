@@ -40,7 +40,6 @@
         <div class="rule base"><span class="rule-label">base (Ground/Grass)</span></div>
         <div class="rule desc"><span class="rule-label">tail</span></div>
       </div>
-      <div class="guide" id="guide0">A</div>
       <canvas class="guide-canvas" id="g0"></canvas>
       <canvas id="c0"></canvas>
     </div>
@@ -52,7 +51,6 @@
         <div class="rule base"><span class="rule-label">base (Ground/Grass)</span></div>
         <div class="rule desc"><span class="rule-label">tail</span></div>
       </div>
-      <div class="guide" id="guide1">a</div>
       <canvas class="guide-canvas" id="g1"></canvas>
       <canvas id="c1"></canvas>
     </div>
@@ -205,8 +203,6 @@ function render() {
   document.getElementById("board1").hidden = !both;
   const g0 = state.mode === "lower" ? glyph(false) : glyph(true);
   const g1 = glyph(false);
-  document.getElementById("guide0").textContent = g0;
-  document.getElementById("guide1").textContent = g1;
   document.getElementById("tag0").textContent = state.mode === "lower" ? "Lower case" : "Upper case";
   const lowerTip = TIPS[g1] ? " Lower: " + TIPS[g1] : "";
   document.getElementById("tip").innerHTML = "<strong>" + g0 + (both ? " / " + g1 : "") + ":</strong> " + (TIPS[g0] || "") + (both ? lowerTip : "");
@@ -217,7 +213,8 @@ function render() {
     const b = document.createElement("button");
     b.textContent = state.mode === "lower" ? L.toLowerCase() : L;
     b.classList.toggle("active", i === state.index);
-    const mark = state.mode === "lower" ? state.progress[L.toLowerCase()] : state.progress[L];
+    const mark = state.mode === "both" ? state.progress[L] && state.progress[L.toLowerCase()]
+      : state.mode === "lower" ? state.progress[L.toLowerCase()] : state.progress[L];
     b.classList.toggle("done", !!mark);
     b.addEventListener("click", () => { state.index = i; clearAll(); render(); say(); });
     alpha.appendChild(b);

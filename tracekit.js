@@ -417,38 +417,113 @@
       for (const g of byG[gi]) { const q = (g.x - p.x) * (g.x - p.x) + (g.y - p.y) * (g.y - p.y); if (q < best) { best = q; d = g.d; } }
       return best <= (tolBase + p.pr) * (tolBase + p.pr) ? d : null;
     };
-    const total = {};
-    ink.forEach(p => { total[p.si] = (total[p.si] || 0) + 1; });
+    const inkOf = {};
+    ink.forEach((p, k) => { (inkOf[p.si] = inkOf[p.si] || []).push(k); });
     const proj = placed.map((st, gi) => ink.map(p => near(p, gi)));
+    const counts = placed.map((st, gi) => {
+      const c = {};
+      ink.forEach((p, k) => { if (proj[gi][k] !== null) c[p.si] = (c[p.si] || 0) + 1; });
+      return c;
+    });
+    const coverOf = (gi, si) => byG[gi].filter(g => inkOf[si].some(k => {
+      const p = ink[k]; return Math.hypot(p.x - g.x, p.y - g.y) <= covBase + p.pr;
+    })).length / byG[gi].length;
     // The child's stroke that best traced each guide stroke: it covers most of that stroke, and most of
     // the child's stroke lies on it. (Coverage alone can't separate a stroke that runs right beside another.)
+    // A dot can be claimed by a single tap.
     const owner = placed.map((st, gi) => {
-      const counts = {};
-      ink.forEach((p, k) => { if (proj[gi][k] !== null) counts[p.si] = (counts[p.si] || 0) + 1; });
       let bestSi = -1, bestScore = 0;
-      Object.keys(counts).forEach(key => {
-        const si = +key;
-        if (counts[key] <= 2) return;
-        const mine = ink.filter(p => p.si === si);
-        const cov = byG[gi].filter(g => mine.some(p => Math.hypot(p.x - g.x, p.y - g.y) <= covBase + p.pr)).length / byG[gi].length;
-        const score = cov * (0.5 + 0.5 * counts[key] / total[si]);
+      Object.keys(counts[gi]).forEach(key => {
+        const si = +key, n = counts[gi][key];
+        if (st.dot ? n < 1 : n <= 2) return;
+        const score = coverOf(gi, si) * (0.5 + 0.5 * n / inkOf[si].length);
         if (score > bestScore) { bestScore = score; bestSi = si; }
       });
       return bestSi;
     });
-    let last = -1;
-    owner.forEach(o => { if (o < 0) return; if (o < last) res.orderOk = false; last = Math.max(last, o); });
+    // Lifting the pencil at a sharp corner (K): extra child strokes that lie mostly on one guide stroke
+    // and do not own another one belong to it too.
+    const owned = new Set(owner.filter(o => o >= 0));
+    const strokesFor = placed.map((st, gi) => {
+      if (owner[gi] < 0) return [];
+      const list = [owner[gi]];
+      if (!st.dot) Object.keys(counts[gi]).forEach(key => {
+        const si = +key, n = counts[gi][key];
+        if (owned.has(si) || n <= 2 || n < 0.6 * inkOf[si].length) return;
+        const best = placed.reduce((bg, s2, g2) => ((counts[g2][key] || 0) > (counts[bg][key] || 0) ? g2 : bg), gi);
+        if (best === gi) list.push(si);
+      });
+      return list.sort((x, y) => x - y);
+    });
+    // One continuous child stroke over two guide strokes in a row (u without lifting, n back up the stem):
+    // split it where it reaches the end of the first guide stroke.
+    const range = placed.map(() => [0, Infinity]);
+    // Where the child's stroke has gone furthest along guide stroke gi. Progress is followed point by point,
+    // so on a closed stroke (the circle of a) its start and end, at the same spot, are not mixed up.
+    function splitIndex(si, gi) {
+      const st = placed[gi];
+      let bestK = -1, best = -Infinity, prev = null, cum = 0;
+      inkOf[si].forEach(k => {
+        const d = proj[gi][k];
+        if (d === null) return;
+        if (prev !== null) {
+          let dd = d - prev;
+          if (st.closed) { if (dd > st.len / 2) dd -= st.len; if (dd < -st.len / 2) dd += st.len; }
+          cum += dd;
+        }
+        prev = d;
+        if (cum > best + 1e-6) { best = cum; bestK = k; }
+      });
+      return bestK;
+    }
+    // Share of a guide stroke covered by part of a child's stroke (ink indexes from..to).
+    const coverPart = (gi, si, from, to) => byG[gi].filter(g => inkOf[si].some(k => {
+      if (k < from || k > to) return false;
+      const p = ink[k]; return Math.hypot(p.x - g.x, p.y - g.y) <= covBase + p.pr;
+    })).length / byG[gi].length;
+    const badSplit = new Set();
+    for (let gi = 1; gi < placed.length; gi++) {
+      if (owner[gi] < 0 || owner[gi] !== owner[gi - 1] || placed[gi].dot || placed[gi - 1].dot) continue;
+      const si = owner[gi], sp = splitIndex(si, gi - 1);
+      if (sp < 0) continue;
+      range[gi - 1][1] = sp;
+      range[gi][0] = sp;
+      // Drawn in the right order, the part before the split traces the first guide stroke and the part after
+      // traces the second. A backwards continuous stroke does not.
+      if (coverPart(gi - 1, si, range[gi - 1][0], sp) < 0.5 || coverPart(gi, si, sp, Infinity) < 0.5) { badSplit.add(gi - 1); badSplit.add(gi); }
+    }
+    const wrongOrder = new Set();
+    let lastHi = -1, lastGi = -1;
+    placed.forEach((st, gi) => {
+      const list = strokesFor[gi];
+      if (!list.length) return;
+      if (list[0] < lastHi) { res.orderOk = false; wrongOrder.add(gi); if (lastGi >= 0) wrongOrder.add(lastGi); }
+      lastHi = Math.max(lastHi, list[list.length - 1]); lastGi = gi;
+    });
     placed.forEach((st, gi) => {
       if (st.dot || owner[gi] < 0) return;
-      const seq = [];
-      ink.forEach((p, k) => { if (p.si === owner[gi] && proj[gi][k] !== null) seq.push(proj[gi][k]); });
-      let pos = 0, neg = 0;
-      for (let k = 1; k < seq.length; k++) {
-        let dd = seq[k] - seq[k - 1];
-        if (st.closed) { if (dd > st.len / 2) dd -= st.len; if (dd < -st.len / 2) dd += st.len; }
-        if (dd > 0) pos += dd; else neg -= dd;
-      }
-      if (neg > pos && neg > 0.3 * st.len) { res.directionOk = false; res.wrongWay.push(gi); }
+      let pos = 0, neg = 0, prevMean = -Infinity, back = badSplit.has(gi);
+      strokesFor[gi].forEach(si => {
+        const seq = [];
+        inkOf[si].forEach(k => {
+          if (si === owner[gi] && (k < range[gi][0] || k > range[gi][1])) return;
+          if (proj[gi][k] !== null) seq.push(proj[gi][k]);
+        });
+        if (!seq.length) return;
+        let sp = 0, sn = 0;
+        for (let k = 1; k < seq.length; k++) {
+          let dd = seq[k] - seq[k - 1];
+          if (st.closed) { if (dd > st.len / 2) dd -= st.len; if (dd < -st.len / 2) dd += st.len; }
+          if (dd > 0) sp += dd; else sn -= dd;
+        }
+        pos += sp; neg += sn;
+        // Each piece after a lift must go forward too.
+        if (strokesFor[gi].length > 1 && sn > sp && sn > 0.15 * st.len) back = true;
+        const mean = seq.reduce((x, y) => x + y, 0) / seq.length;
+        if (!st.closed && mean < prevMean - 0.1 * st.len) back = true; // a later piece drawn before an earlier part
+        prevMean = Math.max(prevMean, mean);
+      });
+      if ((neg > pos && neg > 0.3 * st.len) || back) { res.directionOk = false; res.wrongWay.push(gi); }
     });
 
     // 4) Per letter (for words): every letter must be on the line and traced.
@@ -463,9 +538,11 @@
       idx.forEach(gi => placed[gi].px.forEach(p => { xs.push(p[0]); ys.push(p[1]); }));
       const onLine = n ? 1 - offN / n : 1;
       let reason = null;
+      const orderOk = !idx.some(gi => wrongOrder.has(gi)), directionOk = !idx.some(gi => res.wrongWay.includes(gi));
       if (onLine < cfg.inkOnLineMin) reason = "off";
       else if (cov < cfg.coverageMin || minStroke < cfg.strokeCoverageMin) reason = "partial";
-      return { index: li, char: placed[idx[0]].char, reason, onLine, coverage: cov,
+      else if (cfg.orderCheck === "strict" && !(orderOk && directionOk)) reason = "order";
+      return { index: li, char: placed[idx[0]].char, reason, onLine, coverage: cov, orderOk, directionOk,
         box: { minX: Math.min.apply(null, xs), maxX: Math.max.apply(null, xs), maxY: Math.max.apply(null, ys) } };
     });
     res.badLetters = res.letters.filter(l => l.reason);
@@ -473,7 +550,7 @@
     if (res.inkOnLine < cfg.inkOnLineMin) res.reason = "off";
     else if (res.coverage < cfg.coverageMin || res.strokeCoverage.some(c => c < cfg.strokeCoverageMin)) res.reason = "partial";
     else if (res.badLetters.some(l => l.reason === "off")) res.reason = "off";
-    else if (res.badLetters.length) res.reason = "partial";
+    else if (res.badLetters.some(l => l.reason === "partial")) res.reason = "partial";
     else if (cfg.orderCheck === "strict" && !(res.orderOk && res.directionOk)) res.reason = "order";
     res.pass = !res.reason;
     res.hint = res.pass && cfg.orderCheck !== "off" && !(res.orderOk && res.directionOk);

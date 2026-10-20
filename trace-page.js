@@ -152,6 +152,15 @@ const TracePage = (function () {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
+    // A tap that hardly moved (the dot on i and j): Safari draws nothing for a zero-length line,
+    // so draw a short line that the round caps turn into a dot.
+    const p0 = stroke.points[0];
+    if (stroke.points.every(p => Math.hypot(p.x - p0.x, p.y - p0.y) < 0.5)) {
+      ctx.moveTo(p0.x - 0.4, p0.y);
+      ctx.lineTo(p0.x + 0.4, p0.y);
+      ctx.stroke();
+      return;
+    }
     ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
     for (let i = 1; i < stroke.points.length - 1; i++) {
       const midX = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
@@ -206,6 +215,7 @@ const TracePage = (function () {
     return e.pointerType === "touch" && (e.width > PALM_PX || e.height > PALM_PX);
   }
 
+  let strokeSeq = 0; // order of strokes across boards, so Undo removes only the latest one
   boards.forEach(board => {
     const c = board.canvas;
     c.addEventListener("pointerdown", e => {
@@ -229,7 +239,7 @@ const TracePage = (function () {
     });
     const end = e => {
       if (e.pointerId !== board.pointer) return;
-      if (board.current && board.current.points.length) board.strokes.push(board.current);
+      if (board.current && board.current.points.length) { board.current.seq = ++strokeSeq; board.strokes.push(board.current); }
       board.current = null;
       board.pointer = null;
       board.pointerType = null;
@@ -305,19 +315,30 @@ const TracePage = (function () {
   }
 
   const refresh = () => (cfg.render ? cfg.render() : resize());
+  function syncGuideBtns() {
+    const off = document.body.classList.contains("noguide");
+    const g = $("guideBtn"), st = $("styleBtn");
+    g.textContent = "Dotted guide"; st.textContent = "Solid guide";
+    g.classList.toggle("active", !off && state.style === "dotted");
+    st.classList.toggle("active", !off && state.style === "solid");
+    g.setAttribute("aria-pressed", String(!off && state.style === "dotted"));
+    st.setAttribute("aria-pressed", String(!off && state.style === "solid"));
+  }
 
   function init(options) {
     cfg = Object.assign(cfg, options);
-    $("guideBtn").addEventListener("click", () => {
-      document.body.classList.toggle("noguide");
-      $("guideBtn").classList.toggle("active");
-      resize();
-    });
-    $("styleBtn").addEventListener("click", () => {
-      state.style = state.style === "dotted" ? "solid" : "dotted";
-      $("styleBtn").textContent = state.style === "dotted" ? "Solid guide" : "Dotted guide";
+    // Dotted guide / Solid guide: the active style is highlighted. Tapping the active one hides the guide;
+    // tapping either one shows that style again.
+    const pickGuide = style => {
+      const off = document.body.classList.contains("noguide");
+      if (!off && state.style === style) document.body.classList.add("noguide");
+      else { document.body.classList.remove("noguide"); state.style = style; }
+      syncGuideBtns();
       refresh();
-    });
+    };
+    $("guideBtn").addEventListener("click", () => pickGuide("dotted"));
+    $("styleBtn").addEventListener("click", () => pickGuide("solid"));
+    syncGuideBtns();
     $("swatches").addEventListener("click", e => {
       const btn = e.target.closest(".swatch");
       if (!btn) return;
@@ -327,7 +348,13 @@ const TracePage = (function () {
     $("size").addEventListener("input", e => state.size = Number(e.target.value));
     $("clear").addEventListener("click", () => { clearAll(); resize(); });
     $("undo").addEventListener("click", () => {
-      boards.forEach(b => { if (b.strokes.length) b.strokes.pop(); b.feedback = null; redraw(b); });
+      let last = null;
+      visible().forEach(b => {
+        const s = b.strokes[b.strokes.length - 1];
+        if (s && (!last || (s.seq || 0) > (last.s.seq || 0))) last = { b, s };
+      });
+      if (last) last.b.strokes.pop();
+      boards.forEach(b => { b.feedback = null; redraw(b); });
     });
     $("showBtn").addEventListener("click", () => { if (stopShows.length) stopShow(); else showMe(); });
     const numBtn = $("numBtn");
